@@ -169,9 +169,7 @@ router.post("/upload-media", auth, (req, res) => {
 
             return res.status(200).json({
                 error: false,
-                // adjust this URL if your static path includes /temp/
-                link: `${BASE_DOMAIN}/upload/${finalFilename}`
-                // or: `${BASE_DOMAIN}/upload/temp/${finalFilename}` if that's how you serve it
+                link: `${BASE_DOMAIN}/api/v1/upload/${finalFilename}`
             });
         } catch (error) {
             console.error("Upload processing error:", error);
