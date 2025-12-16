@@ -11,6 +11,15 @@ const __dirname = path.dirname(__filename);
 
 // Serve uploaded files
 router.get("/upload/:filename", (req, res) => {
+    // #swagger.tags = ['Media']
+    // #swagger.summary = 'Serve uploaded file'
+    // #swagger.description = 'Retrieve and serve uploaded media files'
+    /* #swagger.parameters['filename'] = {
+        in: 'path',
+        required: true,
+        type: 'string',
+        description: 'Filename of the uploaded file'
+    } */
     const filePath = path.join(path.join(__dirname, "../../media/upload/temp"), req.params.filename);
 
     if (!fs.existsSync(filePath)) {

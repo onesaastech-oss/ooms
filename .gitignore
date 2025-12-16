@@ -7,3 +7,4 @@ ecosystem.config.js
 .user.ini
 private.pem
 public.pem
+swagger-output.json

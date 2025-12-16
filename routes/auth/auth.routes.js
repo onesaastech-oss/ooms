@@ -10,6 +10,19 @@ import { SendMail } from "../../helpers/Mail.js";
 import moment from "moment";
 
 router.post("/login/send-otp", async (req, res) => {
+    // #swagger.tags = ['Authentication']
+    // #swagger.summary = 'Send OTP for login'
+    // #swagger.description = 'Send OTP to user email for login verification'
+    /* #swagger.parameters['body'] = {
+        in: 'body',
+        description: 'Login credentials',
+        required: true,
+        schema: { $ref: '#/definitions/LoginRequest' }
+    } */
+    /* #swagger.responses[200] = {
+        description: 'OTP sent successfully',
+        schema: { $ref: '#/definitions/ApiResponse' }
+    } */
     try {
         const { email, password } = req.body || {};
 
@@ -124,6 +137,19 @@ router.post("/login/send-otp", async (req, res) => {
 
 
 router.post("/login/email", async (req, res) => {
+    // #swagger.tags = ['Authentication']
+    // #swagger.summary = 'Login with email and OTP'
+    // #swagger.description = 'Complete login process with email, password and OTP'
+    /* #swagger.parameters['body'] = {
+        in: 'body',
+        description: 'Login credentials with OTP',
+        required: true,
+        schema: { $ref: '#/definitions/LoginOTPRequest' }
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Login successful',
+        schema: { $ref: '#/definitions/ApiResponse' }
+    } */
     try {
         const { email, password, otp } = req.body || {};
         const IP = req?.ip;

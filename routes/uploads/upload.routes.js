@@ -137,6 +137,27 @@ const processWebMFile = async (filePath, tempFilename, mimetype) => {
 };
 
 router.post("/upload-media", auth, (req, res) => {
+    // #swagger.tags = ['Upload']
+    // #swagger.summary = 'Upload media file'
+    // #swagger.description = 'Upload and process media files (images, videos, documents)'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.consumes = ['multipart/form-data'] */
+    /* #swagger.parameters['file'] = {
+        in: 'formData',
+        type: 'file',
+        required: true,
+        description: 'Media file to upload'
+    } */
+    /* #swagger.responses[200] = {
+        description: 'File uploaded successfully',
+        schema: { 
+            type: 'object',
+            properties: {
+                error: { type: 'boolean' },
+                link: { type: 'string' }
+            }
+        }
+    } */
     upload.single("file")(req, res, async (err) => {
         if (err) {
             console.error("Multer error:", err);
