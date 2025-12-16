@@ -1,8 +1,8 @@
 import express from "express";
-import pool from "../db.js";
-import { auth, CheckUserProjectMaping } from "../middleware/auth.js";
-import { RANDOM_STRING, TIMESTAMP, USER_DATA } from "../helpers/function.js";
-import { Decrypt } from "../helpers/Decrypt.js";
+import pool from "../../db.js";
+import { auth, CheckUserProjectMaping } from "../../middleware/auth.js";
+import { RANDOM_STRING, TIMESTAMP, USER_DATA } from "../../helpers/function.js";
+import { Decrypt } from "../../helpers/Decrypt.js";
 
 const router = express.Router();
 

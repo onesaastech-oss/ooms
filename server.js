@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import authRouter from "./routes/auth.js";
+import apiRoutes from "./routes/index.js";
 import path from "path";
 import fs from "fs";
 import mime from "mime";
@@ -16,7 +16,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use("/auth", authRouter);
+app.use("/api/v1", apiRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

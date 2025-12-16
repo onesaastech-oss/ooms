@@ -3,6 +3,7 @@ dist/
 .env
 *.log
 .DS_Store
-uploads/
 ecosystem.config.js
 .user.ini
+private.pem
+public.pem
