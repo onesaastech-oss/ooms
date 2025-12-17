@@ -173,7 +173,8 @@ export function generateMethodDoc(method, route, tag, customConfig = {}) {
     
     // Method-specific parameters
     if (['post', 'put', 'patch'].includes(methodLower)) {
-        if (customConfig.useEncryption !== false) {
+        // Default to RAW JSON bodies (no encrypted wrapper) unless explicitly enabled.
+        if (customConfig.useEncryption === true) {
             parameters.push(getEncryptedBodyParameter());
         } else if (customConfig.bodySchema) {
             parameters.push({
@@ -181,6 +182,14 @@ export function generateMethodDoc(method, route, tag, customConfig = {}) {
                 in: 'body',
                 required: true,
                 schema: customConfig.bodySchema
+            });
+        } else {
+            // Fallback: show an unstructured JSON object instead of an encrypted wrapper
+            parameters.push({
+                name: 'body',
+                in: 'body',
+                required: true,
+                schema: { type: 'object' }
             });
         }
     }
@@ -301,6 +310,36 @@ export const routeConfigs = {
                 200: {
                     description: 'Contact list retrieved successfully',
                     schema: { $ref: '#/definitions/ContactListResponse' }
+                }
+            }
+        }
+    },
+
+    // Settings routes (staff mapping)
+    '/create-staff': {
+        post: {
+            summary: 'Create staff mapping (assign existing user to a branch)',
+            description: 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).',
+            useEncryption: false,
+            bodySchema: { $ref: '#/definitions/CreateStaffRequest' },
+            responses: {
+                200: {
+                    description: 'Staff assigned to branch successfully (or already assigned)',
+                    schema: { $ref: '#/definitions/ApiResponse' }
+                }
+            }
+        }
+    },
+    '/assign-staff': {
+        post: {
+            summary: 'Assign staff to a branch',
+            description: 'Maps an existing user (by username) to a branch in branch_mapping (idempotent if already mapped and not deleted).',
+            useEncryption: false,
+            bodySchema: { $ref: '#/definitions/AssignStaffRequest' },
+            responses: {
+                200: {
+                    description: 'Staff mapped to branch successfully (or already mapped)',
+                    schema: { $ref: '#/definitions/ApiResponse' }
                 }
             }
         }

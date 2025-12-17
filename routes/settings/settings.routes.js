@@ -68,9 +68,6 @@ async function insertRow(tableName, data) {
  *                       icon:
  *                         type: string
  *                         example: users
- *                       category:
- *                         type: string
- *                         example: user-management
  *                       route:
  *                         type: string
  *                         example: /settings/staff
@@ -171,14 +168,6 @@ router.get('/', (req, res) => {
             message: 'Settings list retrieved successfully',
             data: settingsList,
             total: settingsList.length,
-            categories: {
-                'user-management': 'User Management',
-                'financial': 'Financial Settings',
-                'general': 'General Settings',
-                'communication': 'Communication',
-                'security': 'Security',
-                'organization': 'Organization'
-            }
         });
     } catch (error) {
         console.error('Error fetching settings list:', error);
@@ -190,10 +179,23 @@ router.get('/', (req, res) => {
     }
 });
 
-// Assigns an existing user as staff to a branch (branch_mapping only)
 router.post('/create-staff', auth, async (req, res) => {
+    // #swagger.tags = ['Settings']
+    // #swagger.summary = 'Create staff mapping (assign existing user to a branch)'
+    // #swagger.description = 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.parameters['body'] = {
+        in: 'body',
+        description: 'Staff mapping payload',
+        required: true,
+        schema: { $ref: '#/definitions/CreateStaffRequest' }
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Staff assigned to branch successfully (or already assigned)',
+        schema: { $ref: '#/definitions/ApiResponse' }
+    } */
     try {
-        const { username, email, branch_id, designation, permission, type } = req.body || {};
+        const { username, email, branch_id, designation, permission, type='staff' } = req.body || {};
         const createdBy = req.headers["username"] || "";
 
         if ((!username && !email) || !branch_id) {
@@ -273,79 +275,5 @@ router.post('/create-staff', auth, async (req, res) => {
     }
 });
 
-// Maps an existing staff (username) to a branch in branch_mapping (idempotent-ish)
-router.post('/assign-staff', auth, async (req, res) => {
-    try {
-        const { username, branch_id, designation, type } = req.body || {};
-        const createdBy = req.headers["username"] || "";
-
-        if (!username || !branch_id) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required parameters (username, branch_id)"
-            });
-        }
-
-        const [userRows] = await pool.query("SELECT username FROM users WHERE username = ? LIMIT 1", [username]);
-        if (!userRows.length) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
-        // If already mapped (not deleted), return success
-        const [existingMap] = await pool.query(
-            "SELECT id, map_id FROM branch_mapping WHERE username = ? AND branch_id = ? AND (is_deleted = '0' OR is_deleted = 0) LIMIT 1",
-            [username, branch_id]
-        ).catch(async () => {
-            // Fallback if is_deleted column doesn't exist
-            const [rows] = await pool.query(
-                "SELECT id, map_id FROM branch_mapping WHERE username = ? AND branch_id = ? LIMIT 1",
-                [username, branch_id]
-            );
-            return [rows];
-        });
-
-        if (existingMap?.length) {
-            return res.status(200).json({
-                success: true,
-                message: "Staff already mapped to this branch",
-                data: { id: existingMap[0]?.id, map_id: existingMap[0]?.map_id, username, branch_id }
-            });
-        }
-
-        const map_id = RANDOM_STRING(30);
-        const invitation_token = RANDOM_STRING(30);
-        await insertRow("branch_mapping", {
-            map_id,
-            branch_id,
-            username,
-            designation: designation ?? null,
-            create_date: UNIX_TIMESTAMP(),
-            create_by: createdBy || username,
-            modify_date: UNIX_TIMESTAMP(),
-            modify_by: createdBy || username,
-            type: type || "staff",
-            is_accepted: "1",
-            invitation_token,
-            status: "1",
-            is_deleted: "0"
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Staff mapped to branch successfully",
-            data: { username, branch_id, map_id }
-        });
-    } catch (error) {
-        console.error("Error assigning staff:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to assign staff",
-            error: error.message
-        });
-    }
-});
 
 export default router;

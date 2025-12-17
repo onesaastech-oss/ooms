@@ -28,12 +28,6 @@ export const swaggerConfig = {
             name: 'Authorization',
             in: 'header',
             description: 'Bearer token for authentication (Format: Bearer <your-token>)'
-        },
-        encryptedData: {
-            type: 'apiKey',
-            name: 'X-Encrypted-Data',
-            in: 'header',
-            description: 'Encrypted request data using project encryption'
         }
     }
 };

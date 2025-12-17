@@ -108,6 +108,72 @@ export const swaggerDefinitions = {
         }
     },
 
+    // Settings / Staff Models
+    CreateStaffRequest: {
+        type: 'object',
+        properties: {
+            username: {
+                type: 'string',
+                description: 'Existing username to map to a branch (optional if email provided)',
+                example: 'john_doe'
+            },
+            email: {
+                type: 'string',
+                format: 'email',
+                description: 'Existing user email/login_id used to resolve username (optional if username provided)',
+                example: 'john@example.com'
+            },
+            branch_id: {
+                type: 'string',
+                description: 'Branch identifier',
+                example: 'BRANCH_001'
+            },
+            designation: {
+                type: 'string',
+                description: 'Staff designation/title',
+                example: 'Sales Executive'
+            },
+            permission: {
+                type: 'string',
+                description: 'Role/type stored in branch_mapping.type (preferred over type)',
+                example: 'staff'
+            },
+            type: {
+                type: 'string',
+                description: 'Role/type stored in branch_mapping.type (fallback if permission not provided)',
+                example: 'staff'
+            }
+        },
+        required: ['branch_id']
+    },
+
+    AssignStaffRequest: {
+        type: 'object',
+        properties: {
+            username: {
+                type: 'string',
+                description: 'Existing username to map to a branch',
+                example: 'john_doe'
+            },
+            branch_id: {
+                type: 'string',
+                description: 'Branch identifier',
+                example: 'BRANCH_001'
+            },
+            designation: {
+                type: 'string',
+                description: 'Staff designation/title',
+                example: 'Sales Executive'
+            },
+            type: {
+                type: 'string',
+                description: 'Role/type stored in branch_mapping.type',
+                example: 'staff'
+            }
+        },
+        required: ['username', 'branch_id']
+    },
+
     // User Models
     User: {
         type: 'object',
@@ -234,22 +300,6 @@ export const swaggerDefinitions = {
                 description: 'Whether this is the last page' 
             }
         }
-    },
-
-    // Encrypted Data Models
-    EncryptedRequest: {
-        type: 'object',
-        properties: {
-            data: { 
-                type: 'string', 
-                description: 'Encrypted request payload' 
-            },
-            key: { 
-                type: 'string', 
-                description: 'Encryption key for decrypting data' 
-            }
-        },
-        required: ['data', 'key']
     },
 
     // Health Check Models
