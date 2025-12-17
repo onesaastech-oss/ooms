@@ -2,10 +2,27 @@ import pool from "../db.js";
 
 async function checkToken(username, token) {
     try {
-        const [rows] = await pool.query(
-            "SELECT login_token.id,users.status AS user_status FROM login_token JOIN users ON users.username = login_token.username WHERE login_token.token = ? AND login_token.username = ?",
-            [token, username]
-        );
+        // OTP login saves token to `tokens` table, while Google login/register uses `login_token`.
+        // Support both for compatibility.
+        let rows = [];
+
+        try {
+            const [tokenRows] = await pool.query(
+                "SELECT tokens.id, users.status AS user_status FROM tokens JOIN users ON users.username = tokens.username WHERE tokens.token = ? AND tokens.username = ?",
+                [token, username]
+            );
+            rows = tokenRows;
+        } catch (e) {
+            // ignore and try legacy table below
+        }
+
+        if (!rows.length) {
+            const [legacyRows] = await pool.query(
+                "SELECT login_token.id, users.status AS user_status FROM login_token JOIN users ON users.username = login_token.username WHERE login_token.token = ? AND login_token.username = ?",
+                [token, username]
+            );
+            rows = legacyRows;
+        }
 
         if (rows.length == 1) {
             var user_status = rows[0]?.user_status;
