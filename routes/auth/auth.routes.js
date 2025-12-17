@@ -192,12 +192,68 @@ router.post("/login/email", async (req, res) => {
 
         await pool.query("INSERT INTO `tokens` (`token_id`, `username`, `token`, `create_date`, `create_by`, `create_ip`, `last_used_date`, `last_ip`, `status`,`expire_date`) VALUES (?,?,?,?,?,?,?,?,?,?)", [token_id, username, token, UNIX_TIMESTAMP(), username, IP, UNIX_TIMESTAMP(), IP, '1', expire_date]);
 
+        // Branch access list (owned + mapped)
+        // - Owned: branches created/owned by this user in branch_list -> owned: true
+        // - Mapped: branches assigned to this user in branch_mapping -> owned: false
+        const [ownedRows] = await pool.query(
+            "SELECT branch_id, name FROM branch_list WHERE username = ? AND (status = '1' OR status = 1)",
+            [username]
+        ).catch(async () => {
+            // Fallback if status column differs/missing
+            const [rows] = await pool.query("SELECT branch_id, name FROM branch_list WHERE username = ?", [username]);
+            return [rows];
+        });
+
+        const [mappedRows] = await pool.query(
+            `SELECT bm.branch_id, bl.name
+             FROM branch_mapping bm
+             LEFT JOIN branch_list bl ON bl.branch_id = bm.branch_id
+             WHERE bm.username = ?
+               AND (bm.is_deleted = '0' OR bm.is_deleted = 0)
+               AND (bm.status = '1' OR bm.status = 1)`,
+            [username]
+        ).catch(async () => {
+            // Fallback if is_deleted/status columns differ/missing
+            const [rows] = await pool.query(
+                `SELECT bm.branch_id, bl.name
+                 FROM branch_mapping bm
+                 LEFT JOIN branch_list bl ON bl.branch_id = bm.branch_id
+                 WHERE bm.username = ?`,
+                [username]
+            );
+            return [rows];
+        });
+
+        const branches = [];
+        const ownedSet = new Set();
+
+        (ownedRows || []).forEach((b) => {
+            if (!b?.branch_id) return;
+            ownedSet.add(String(b.branch_id));
+            branches.push({
+                branch_id: b.branch_id,
+                name: b?.name ?? null,
+                owned: true
+            });
+        });
+
+        (mappedRows || []).forEach((b) => {
+            if (!b?.branch_id) return;
+            if (ownedSet.has(String(b.branch_id))) return; // If you own it, return only owned:true
+            branches.push({
+                branch_id: b.branch_id,
+                name: b?.name ?? null,
+                owned: false
+            });
+        });
+
 
         return res.status(200).json({
             success: true,
             message: "Login successful",
             token,
-            expire_date
+            expire_date,
+            branches
         });
 
     } catch (err) {
