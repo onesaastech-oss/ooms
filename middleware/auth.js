@@ -59,5 +59,19 @@ async function auth(req, res, next) {
     next();
 }
 
+// Express middleware / helper used across routes
+async function CheckUserProjectMaping(username, project_id) {
 
-export { auth }
+    const [row] = await pool.query(
+        "SELECT * FROM project_mapping WHERE username = ? AND project_id = ? AND is_deleted = ?",
+        [username, project_id, '0']
+    );
+
+    if (row.length == 1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+export { auth, CheckUserProjectMaping }
