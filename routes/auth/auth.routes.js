@@ -12,134 +12,138 @@ import moment from "moment";
 router.post("/login/send-otp", async (req, res) => {
     // #swagger.tags = ['Authentication']
     // #swagger.summary = 'Send OTP for login'
-    // #swagger.description = 'Send OTP to user email for login verification'
+    // #swagger.description = 'Validates user credentials and sends an OTP to the registered email address for login verification.'
     /* #swagger.parameters['body'] = {
-        in: 'body',
-        description: 'Login credentials',
-        required: true,
-        schema: { $ref: '#/definitions/LoginRequest' }
+          in: 'body',
+          description: 'Login credentials',
+          required: true,
+          schema: { $ref: '#/definitions/LoginRequest' }
     } */
     /* #swagger.responses[200] = {
-        description: 'OTP sent successfully',
-        schema: { $ref: '#/definitions/ApiResponse' }
+          description: 'OTP sent successfully',
+          schema: { $ref: '#/definitions/ApiResponse' }
     } */
+    /* #swagger.responses[400] = {
+          description: 'Missing required parameters',
+          schema: { $ref: '#/definitions/ApiResponse' }
+    } */
+    /* #swagger.responses[401] = {
+          description: 'Invalid username or password',
+          schema: { $ref: '#/definitions/ApiResponse' }
+    } */
+    /* #swagger.responses[500] = {
+          description: 'Server error',
+          schema: { $ref: '#/definitions/ApiResponse' }
+    } */
+
+    let conn;
+
     try {
-        const { email, password } = req.body || {};
+        const { email, password } = req.body ?? {};
 
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required parameters"
+                message: "Missing required parameters (email, password).",
             });
         }
 
-        const [rows] = await pool.query(
-            "SELECT username FROM users WHERE login_id = ? AND password = ? AND status = ?",
-            [email, password, '1']
+        conn = await pool.getConnection();
+        await conn.beginTransaction();
+
+        // NOTE: Best practice is hashed password (bcrypt). Keeping your current DB design unchanged.
+        const [rows] = await conn.execute(
+            "SELECT username, login_id FROM users WHERE login_id = ? AND password = ? AND status = ? LIMIT 1",
+            [email, password, "1"]
         );
 
-        if (!rows.length) {
+        if (rows.length === 0) {
+            await conn.rollback();
             return res.status(401).json({
                 success: false,
-                message: "Invalid username or password"
+                message: "Invalid username or password.",
             });
         }
 
-        const { username } = rows[0];
+        const { username, login_id } = rows[0];
 
         // OTP generation
         const otp_id = RANDOM_STRING();
-        const otp = RANDOM_INTEGER();
+        const otp = RANDOM_INTEGER(); // ensure this returns a numeric OTP (e.g., 6 digits)
         const create_date = UNIX_TIMESTAMP();
         const expire_date = FUTURE_UNIX_TIMESTAMP(3);
 
-        await pool.query(
-            `INSERT INTO otps 
-            (otp_id, type, otp, username, create_date, expire_date, status, remark)
-            VALUES (?,?,?,?,?,?,?,?)`,
-            [otp_id, 'login', otp, username, create_date, expire_date, '0', 'Email login OTP']
+        // Optional: invalidate previous active OTPs for this user/type to prevent confusion
+        await conn.execute(
+            "UPDATE otps SET status = ? WHERE username = ? AND type = ? AND status = ?",
+            ["1", username, "login", "0"]
         );
 
+        await conn.execute(
+            `INSERT INTO otps 
+        (otp_id, type, otp, username, create_date, expire_date, status, remark)
+       VALUES (?,?,?,?,?,?,?,?)`,
+            [otp_id, "login", otp, username, create_date, expire_date, "0", "Email login OTP"]
+        );
+
+        await conn.commit();
+
+        // Send email after DB commit (so OTP exists even if mail sending fails intermittently)
         await SendMail({
-            to: email,
+            to: login_id, // use the stored login email, not only the request email
             subject: `Login OTP for ${APP_NAME}`,
             html: `<!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            background: #f3f4f6;
-                            font-family: Arial, sans-serif;
-                        }
-                        .container {
-                            max-width: 420px;
-                            margin: 40px auto;
-                            background: #ffffff;
-                            border-radius: 10px;
-                            padding: 24px;
-                            text-align: center;
-                            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                        }
-                        h2 {
-                            color: #111827;
-                            margin-bottom: 8px;
-                        }
-                        p {
-                            color: #6b7280;
-                            font-size: 14px;
-                        }
-                        .otp {
-                            margin: 20px 0;
-                            font-size: 28px;
-                            font-weight: bold;
-                            letter-spacing: 8px;
-                            color: #4f46e5;
-                        }
-                        .footer {
-                            font-size: 12px;
-                            color: #9ca3af;
-                            margin-top: 24px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h2>OTP Verification</h2>
-                        <p>Use the following OTP to complete your login</p>
-                        <div class="otp">${otp}</div>
-                        <p>This OTP is valid for a limited time. Please do not share it with anyone.</p>
-                        <div class="footer">
-                            © ${new Date().getFullYear()} ${APP_NAME}
-                        </div>
-                    </div>
-                </body>
-                </html>`
-        })
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { margin:0; padding:0; background:#f3f4f6; font-family: Arial, sans-serif; }
+    .container { max-width:420px; margin:40px auto; background:#fff; border-radius:10px; padding:24px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,.1); }
+    h2 { color:#111827; margin-bottom:8px; }
+    p { color:#6b7280; font-size:14px; }
+    .otp { margin:20px 0; font-size:28px; font-weight:700; letter-spacing:8px; color:#4f46e5; }
+    .footer { font-size:12px; color:#9ca3af; margin-top:24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>OTP Verification</h2>
+    <p>Use the following OTP to complete your login</p>
+    <div class="otp">${otp}</div>
+    <p>This OTP is valid for a limited time. Please do not share it with anyone.</p>
+    <div class="footer">© ${new Date().getFullYear()} ${APP_NAME}</div>
+  </div>
+</body>
+</html>`,
+        });
 
         return res.status(200).json({
             success: true,
             message: "OTP sent successfully",
-            expire: expire_date
+            expire: expire_date,
         });
-
     } catch (err) {
         console.error("LOGIN OTP ERROR:", err);
 
+        if (conn) {
+            try {
+                await conn.rollback();
+            } catch (_) { }
+        }
+
         return res.status(500).json({
             success: false,
-            message: "Failed to send OTP"
+            message: "Failed to send OTP",
         });
+    } finally {
+        if (conn) conn.release();
     }
 });
-
 
 router.post("/login/email", async (req, res) => {
     // #swagger.tags = ['Authentication']
     // #swagger.summary = 'Login with email and OTP'
-    // #swagger.description = 'Complete login process with email, password and OTP'
+    // #swagger.description = 'Validates email + password, verifies OTP, creates a session token, and returns mapped branches.'
     /* #swagger.parameters['body'] = {
         in: 'body',
         description: 'Login credentials with OTP',
@@ -150,80 +154,129 @@ router.post("/login/email", async (req, res) => {
         description: 'Login successful',
         schema: { $ref: '#/definitions/ApiResponse' }
     } */
+
+    let conn;
+
     try {
         const { email, password, otp } = req.body || {};
-        const IP = req?.ip;
+        const IP = req.ip;
 
         if (!email || !password || !otp) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required parameters"
+                message: "Missing required parameters (email, password, otp)",
             });
         }
 
-        const [rows] = await pool.query(
-            "SELECT username FROM users WHERE login_id = ? AND password = ? AND status = ?",
-            [email, password, '1']
+        conn = await pool.getConnection();
+        await conn.beginTransaction();
+
+        // 1) Validate user
+        const [users] = await conn.query(
+            "SELECT username FROM users WHERE login_id = ? AND password = ? AND status = ? LIMIT 1",
+            [email, password, "1"]
         );
 
-        if (!rows.length) {
+        if (!users.length) {
+            await conn.rollback();
             return res.status(401).json({
                 success: false,
-                message: "Invalid username or password"
+                message: "Invalid username or password",
             });
         }
 
-        const { username } = rows[0];
+        const username = users[0].username;
 
-        const max_expire_unix = FUTURE_UNIX_TIMESTAMP(3);
+        // 2) Validate OTP (must be un-used AND not expired)
+        const nowUnix = UNIX_TIMESTAMP(); // current time
 
-        const [check_row] = await pool.query("SELECT * FROM `otps` WHERE username = ? AND type = ? AND expire_date < ? AND status = ? AND otp = ?", [username, 'login', max_expire_unix, '0', otp]);
+        const [otpRows] = await conn.query(
+            `SELECT id, otp, expire_date, status
+         FROM otps
+        WHERE username = ?
+          AND type = ?
+          AND otp = ?
+          AND status = ?
+          AND expire_date >= ?
+        ORDER BY id DESC
+        LIMIT 1
+        FOR UPDATE`,
+            [username, "login", otp, "0", nowUnix]
+        );
 
-        if (check_row.length === 0) {
+        if (!otpRows.length) {
+            await conn.rollback();
             return res.status(400).json({
                 success: false,
-                message: "Invalid or expired OTP. Please try again."
+                message: "Invalid or expired OTP. Please try again.",
             });
         }
 
+        // Mark OTP as used (so it cannot be reused)
+        await conn.query("UPDATE otps SET status = ? WHERE id = ?", ["1", otpRows[0].id]);
+
+        // 3) Create token
         const token_id = RANDOM_STRING(30);
         const token = RANDOM_STRING(50);
-        const expire_date = moment().add(30, 'days').unix();
+        const expire_date = moment().add(30, "days").unix();
+        const create_date = nowUnix;
 
-        await pool.query("INSERT INTO `tokens` (`token_id`, `username`, `token`, `create_date`, `create_by`, `create_ip`, `last_used_date`, `last_ip`, `status`,`expire_date`) VALUES (?,?,?,?,?,?,?,?,?,?)", [token_id, username, token, UNIX_TIMESTAMP(), username, IP, UNIX_TIMESTAMP(), IP, '1', expire_date]);
+        await conn.query(
+            `INSERT INTO tokens
+        (token_id, username, token, create_date, create_by, create_ip, last_used_date, last_ip, status, expire_date)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+            [token_id, username, token, create_date, username, IP, create_date, IP, "1", expire_date]
+        );
 
-
-        const [map_row] = await pool.query(
-            "SELECT branch_mapping.type, branch_list.name, branch_list.branch_id FROM `branch_mapping` LEFT JOIN branch_list ON branch_list.branch_id = branch_mapping.branch_id WHERE branch_mapping.username = ? AND branch_mapping.is_accepted = ? AND branch_mapping.status = ? AND branch_mapping.is_deleted = ?",
+        // 4) Fetch branches
+        const [map_row] = await conn.query(
+            `SELECT branch_mapping.type, branch_list.name, branch_list.branch_id
+         FROM branch_mapping
+         LEFT JOIN branch_list ON branch_list.branch_id = branch_mapping.branch_id
+        WHERE branch_mapping.username = ?
+          AND branch_mapping.is_accepted = ?
+          AND branch_mapping.status = ?
+          AND branch_mapping.is_deleted = ?`,
             [username, 1, 1, 0]
         );
 
+        await conn.commit();
 
-        for (let index = 0; index < map_row.length; index++) {
-            const element = map_row[index];
+        const branches = [];
+        for (let i = 0; i < map_row.length; i++) {
+            const element = map_row[i];
             branches.push({
                 branch_id: element?.branch_id,
                 name: element?.name,
-                owned: element?.type == 'admin'
+                owned: element?.type === "admin",
             });
         }
-
 
         return res.status(200).json({
             success: true,
             message: "Login successful",
             token,
             expire_date,
-            branches
+            branches,
         });
-
     } catch (err) {
+        if (conn) {
+            try {
+                await conn.rollback();
+            } catch (_) { }
+        }
+
+        console.error("LOGIN EMAIL ERROR:", err);
+
         return res.status(500).json({
             success: false,
-            message: "Failed to send OTP"
+            message: "Login failed",
         });
+    } finally {
+        if (conn) conn.release();
     }
 });
+
 
 
 router.post('/google-login', async (req, res) => {
