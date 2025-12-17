@@ -199,8 +199,7 @@ router.post("/login/email", async (req, res) => {
           AND status = ?
           AND expire_date >= ?
         ORDER BY id DESC
-        LIMIT 1
-        FOR UPDATE`,
+        LIMIT 1`,
             [username, "login", otp, "0", nowUnix]
         );
 
