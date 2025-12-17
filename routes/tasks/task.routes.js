@@ -1,79 +1,130 @@
-import express from "express";
-import pool from "../../db.js";
-import { auth, CheckUserProjectMaping } from "../../middleware/auth.js";
-import { RANDOM_STRING, TIMESTAMP, USER_DATA } from "../../helpers/function.js";
-import { Decrypt } from "../../helpers/Decrypt.js";
-
+import express from 'express';
 const router = express.Router();
 
-router.post("/contact-list", auth, async (req, res) => {
-    if (req.body && Object.keys(req.body).length > 0) {
-        var data = req.body?.data || '';
-        var key = req.body?.key || '';
+import pool from "../../db.js";
+import { auth } from "../../middleware/auth.js";
+import { RANDOM_STRING, UNIX_TIMESTAMP } from "../../helpers/function.js";
+
+async function getTableColumns(tableName) {
+    const [rows] = await pool.query(`SHOW COLUMNS FROM \`${tableName}\``);
+    return new Set(rows.map(r => r.Field));
+}
+
+async function insertRow(tableName, data) {
+    const columns = await getTableColumns(tableName);
+    const entries = Object.entries(data).filter(([k]) => columns.has(k));
+
+    if (entries.length === 0) {
+        throw new Error(`No valid columns to insert into ${tableName}`);
     }
 
-    const decrypt = Decrypt(data, key);
+    const keys = entries.map(([k]) => `\`${k}\``).join(", ");
+    const placeholders = entries.map(() => "?").join(", ");
+    const values = entries.map(([, v]) => v);
 
-    if (!decrypt) {
-        return res.status(200).json({ error: 'Failed to decrypt data' });
-    }
+    const [result] = await pool.query(
+        `INSERT INTO \`${tableName}\` (${keys}) VALUES (${placeholders})`,
+        values
+    );
 
-    const username = req.headers["username"] ? req.headers["username"] : '';
-    const project_id = decrypt?.project_id;
-    const query = decrypt?.query;
-    const page_no = Number(decrypt?.page_no) || 1;
+    return result;
+}
 
-    if (!CheckUserProjectMaping(username, project_id)) {
-        return res.status(200).json({ error: 'User is not assigned on the project' })
-    }
+router.post('/list', auth, async (req, res) => {
+    // #swagger.tags = ['Settings']
+    // #swagger.summary = 'Create staff mapping (assign existing user to a branch)'
+    // #swagger.description = 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.parameters['body'] = {
+        in: 'body',
+        description: 'Staff mapping payload',
+        required: true,
+        schema: { $ref: '#/definitions/CreateStaffRequest' }
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Staff assigned to branch successfully (or already assigned)',
+        schema: { $ref: '#/definitions/ApiResponse' }
+    } */
+    try {
+        const { username, email, branch_id, designation, permission, type = 'staff' } = req.body || {};
+        const createdBy = req.headers["username"] || "";
 
-    const search = `%${query}%`;
-
-    const limit = 20;
-    const offset = (page_no - 1) * limit;
-
-    var [rows] = await pool.query("SELECT * FROM contacts WHERE project_id = ? AND (name LIKE ? OR number LIKE ? OR email LIKE ? OR firm_name LIKE ? OR website LIKE ? OR remark LIKE ?) ORDER BY contacts.name ASC LIMIT ?, ?", [project_id, search, search, search, search, search, search, offset, limit]);
-
-    var data = [];
-
-    if (rows.length > 0) {
-        for (let i = 0; i < rows.length; i++) {
-            let element = rows[i];
-
-            let contact_id = element.contact_id;
-            let name = element.name;
-            let number = element.number;
-            let email = element.email;
-            let website = element.website;
-            let firm_name = element.firm_name;
-            let remark = element.remark;
-
-
-            const [assigned_row] = await pool.query("SELECT * FROM `chat_assigned` WHERE number = ? AND project_id = ? ORDER BY id DESC LIMIT 1", [number, project_id]);
-            const agent_id = assigned_row[0]?.username;
-
-            let obj = {
-                name,
-                number,
-                email,
-                assign_to_me: agent_id == username ? true : false,
-                website,
-                firm_name,
-                remark,
-                contact_id
-            };
-
-            data.push(obj);
+        if ((!username && !email) || !branch_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required parameters (username or email, branch_id)"
+            });
         }
 
-    }
+        // Resolve existing user (must exist in users table)
+        let resolvedUsername = username;
+        if (!resolvedUsername) {
+            // Prefer login_id if present, else email
+            const [rows] = await pool.query(
+                "SELECT username FROM users WHERE login_id = ? OR email = ? LIMIT 1",
+                [email, email]
+            ).catch(async () => {
+                const [fallback] = await pool.query("SELECT username FROM users WHERE email = ? LIMIT 1", [email]);
+                return [fallback];
+            });
+            resolvedUsername = rows?.[0]?.username;
+        }
 
-    res.json({
-        data: data,
-        count: rows.length,
-        page_no,
-        is_last_page: rows.length < limit ? true : false
-    });
+        if (!resolvedUsername) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found. Create the user first, then assign to branch."
+            });
+        }
+
+        // If already mapped (not deleted), return success
+        const [existingMap] = await pool.query(
+            "SELECT id, map_id FROM branch_mapping WHERE username = ? AND branch_id = ? AND (is_deleted = '0' OR is_deleted = 0) LIMIT 1",
+            [resolvedUsername, branch_id]
+        ).catch(async () => {
+            // Fallback if is_deleted column doesn't exist
+            const [rows] = await pool.query(
+                "SELECT id, map_id FROM branch_mapping WHERE username = ? AND branch_id = ? LIMIT 1",
+                [resolvedUsername, branch_id]
+            );
+            return [rows];
+        });
+
+        let map_id = existingMap?.[0]?.map_id;
+        let mappedNow = false;
+
+        if (!existingMap?.length) {
+            // Insert into branch_mapping (schema-safe)
+            map_id = RANDOM_STRING(30);
+            const invitation_token = RANDOM_STRING(30);
+            await insertRow("branch_mapping", {
+                map_id,
+                branch_id,
+                username: resolvedUsername,
+                designation: designation ?? null,
+                create_date: UNIX_TIMESTAMP(),
+                create_by: createdBy || resolvedUsername,
+                modify_date: UNIX_TIMESTAMP(),
+                modify_by: createdBy || resolvedUsername,
+                type: permission || type || "staff",
+                is_accepted: "1",
+                invitation_token,
+                status: "1",
+                is_deleted: "0"
+            });
+            mappedNow = true;
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: mappedNow ? "Staff assigned to branch successfully" : "Staff already assigned to this branch",
+            data: { username: resolvedUsername, branch_id, map_id, mappedNow }
+        });
+    } catch (error) {
+        console.error('Error creating staff:', error);
+        return res.status(500).json({ success: false, message: 'Failed to create staff', error: error.message });
+    }
 });
+
 
 export default router;
