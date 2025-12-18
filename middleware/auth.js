@@ -17,11 +17,15 @@ async function checkToken(username, token) {
         }
 
         if (!rows.length) {
-            const [legacyRows] = await pool.query(
-                "SELECT login_token.id, users.status AS user_status FROM login_token JOIN users ON users.username = login_token.username WHERE login_token.token = ? AND login_token.username = ?",
-                [token, username]
-            );
-            rows = legacyRows;
+            try {
+                const [legacyRows] = await pool.query(
+                    "SELECT login_token.id, users.status AS user_status FROM login_token JOIN users ON users.username = login_token.username WHERE login_token.token = ? AND login_token.username = ?",
+                    [token, username]
+                );
+                rows = legacyRows;
+            } catch (e) {
+                // login_token table doesn't exist or query failed, ignore
+            }
         }
 
         if (rows.length == 1) {
@@ -45,6 +49,9 @@ async function checkToken(username, token) {
 async function auth(req, res, next) {
     const token = req.headers["token"] ? req.headers["token"] : '';
     const username = req.headers["username"] ? req.headers["username"] : '';
+
+    console.log('Auth check - Token:', token, 'Username:', username);
+    
 
     if (!token || !username) {
         return res.status(200).json({ error: "Session expired" });

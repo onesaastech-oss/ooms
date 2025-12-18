@@ -244,7 +244,7 @@ export class SwaggerGenerator {
         console.log('\n🎉 Swagger Documentation Generated Successfully!');
         
         const summary = generateApiSummary(this.swaggerDoc);
-        printApiSummary(summary);
+        // printApiSummary(summary);
         
         console.log(`\n🌐 View documentation at: http://localhost:8877/api-docs`);
         console.log(`📄 JSON schema at: ${this.options.outputFile}`);

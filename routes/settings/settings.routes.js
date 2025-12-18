@@ -275,5 +275,16 @@ router.post('/create-staff', auth, async (req, res) => {
     }
 });
 
+router.get('/staff-list', auth, async (req, res) => {
+    try {
+        const { branch_id } = req.query;
+        const [rows] = await pool.query("SELECT * FROM branch_mapping WHERE branch_id = ?", [branch_id]);
+        return res.status(200).json({ success: true, message: 'Staff list retrieved successfully', data: rows });
+    } catch (error) {
+        console.error('Error fetching staff list:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch staff list', error: error.message });
+    }
+});
+
 
 export default router;
