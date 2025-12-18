@@ -278,11 +278,151 @@ router.post('/create-staff', auth, async (req, res) => {
 router.get('/staff-list', auth, async (req, res) => {
     try {
         const { branch_id } = req.query;
-        const [rows] = await pool.query("SELECT * FROM branch_mapping WHERE branch_id = ?", [branch_id]);
+        const [rows] = await pool.query(
+            "SELECT map_id, username, designation, modify_date, modify_by, type, is_accepted, invitation_token, status, is_deleted, deleted_by FROM branch_mapping WHERE branch_id = ?",
+            [branch_id]
+        );
+
         return res.status(200).json({ success: true, message: 'Staff list retrieved successfully', data: rows });
     } catch (error) {
         console.error('Error fetching staff list:', error);
         return res.status(500).json({ success: false, message: 'Failed to fetch staff list', error: error.message });
+    }
+});
+
+router.post('/delete-staff', auth, async (req, res) => {
+    // #swagger.tags = ['Settings']
+    // #swagger.summary = 'Delete staff member'
+    // #swagger.description = 'Soft delete a staff member by setting is_deleted flag to 1 in branch_mapping table'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.parameters['body'] = {
+        in: 'body',
+        description: 'Staff deletion payload',
+        required: true,
+        schema: {
+            type: 'object',
+            required: ['map_id'],
+            properties: {
+                map_id: {
+                    type: 'string',
+                    description: 'The map_id of the staff member to delete',
+                    example: 'abc123xyz456'
+                }
+            }
+        }
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Staff deleted successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: true
+                },
+                message: {
+                    type: 'string',
+                    example: 'Staff deleted successfully'
+                },
+                data: {
+                    type: 'object',
+                    description: 'Update result from database'
+                }
+            }
+        }
+    } */
+    /* #swagger.responses[500] = {
+        description: 'Internal server error',
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: false
+                },
+                message: {
+                    type: 'string',
+                    example: 'Failed to delete staff'
+                },
+                error: {
+                    type: 'string',
+                    example: 'Error message details'
+                }
+            }
+        }
+    } */
+    try {
+        const { map_id } = req.body;
+        const [rows] = await pool.query("UPDATE branch_mapping SET is_deleted = '1', deleted_by = ? WHERE map_id = ?", [req.headers["username"], map_id]);
+        return res.status(200).json({ success: true, message: 'Staff deleted successfully', data: rows });
+    } catch (error) {
+        console.error('Error deleting staff:', error);
+        return res.status(500).json({ success: false, message: 'Failed to delete staff', error: error.message });
+    }
+});
+
+router.get('/staff-profile', auth, async (req, res) => {
+    // #swagger.tags = ['Settings']
+    // #swagger.summary = 'Get staff profile'
+    // #swagger.description = 'Retrieve profile information for a staff member by username'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.parameters['username'] = {
+        in: 'query',
+        description: 'Username of the staff member',
+        required: true,
+        type: 'string',
+        example: 'john.doe'
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Staff profile retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: true
+                },
+                message: {
+                    type: 'string',
+                    example: 'Staff profile retrieved successfully'
+                },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        description: 'Profile data from database'
+                    }
+                }
+            }
+        }
+    } */
+    /* #swagger.responses[500] = {
+        description: 'Internal server error',
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: false
+                },
+                message: {
+                    type: 'string',
+                    example: 'Failed to fetch staff profile'
+                },
+                error: {
+                    type: 'string',
+                    example: 'Error message details'
+                }
+            }
+        }
+    } */
+    try {
+        const { username } = req.query;
+        const [rows] = await pool.query("SELECT * FROM profile WHERE username = ?", [username]);
+        return res.status(200).json({ success: true, message: 'Staff profile retrieved successfully', data: rows });
+    } catch (error) {
+        console.error('Error fetching staff profile:', error);
+        return res.status(500).json({ success: false, message: 'Failed to fetch staff profile', error: error.message });
     }
 });
 

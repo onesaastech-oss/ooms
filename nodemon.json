@@ -1,0 +1,19 @@
+{
+  "watch": [
+    "routes",
+    "controllers",
+    "middleware",
+    "helpers",
+    "server.js",
+    "db.js"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "node_modules",
+    "media",
+    "swagger-output.json",
+    "api-docs"
+  ],
+  "exec": "node server.js"
+}
+
