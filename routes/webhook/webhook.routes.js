@@ -26,7 +26,7 @@ const router = express.Router();
  *               type: string
  *               example: Deploy failed
  * 
- * ignore it webhook test again
+ * ignore it webhook test again another attempt
  */
 router.post('/', (req, res) => {
     exec("sh /www/wwwroot/ooms-api/deploy.sh", (err, stdout, stderr) => {
