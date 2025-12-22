@@ -188,11 +188,119 @@ router.post('/create', auth, async (req, res) => {
         in: 'body',
         description: 'Staff mapping payload',
         required: true,
-        schema: { $ref: '#/definitions/CreateStaffRequest' }
+        schema: {
+            type: 'object',
+            required: ['branch_id'],
+            properties: {
+                username: {
+                    type: 'string',
+                    description: 'Username of the user to assign (optional if email is provided)',
+                    example: 'john.doe'
+                },
+                email: {
+                    type: 'string',
+                    description: 'Email or login_id of the user to assign (optional if username is provided)',
+                    example: 'john.doe@example.com'
+                },
+                branch_id: {
+                    type: 'string',
+                    description: 'Branch ID where the staff will be assigned',
+                    example: '565655'
+                },
+                designation: {
+                    type: 'string',
+                    description: 'Job designation/title of the staff member',
+                    example: 'Manager'
+                },
+                permission: {
+                    type: 'string',
+                    description: 'Permission type/role for the staff member',
+                    example: 'admin'
+                },
+                type: {
+                    type: 'string',
+                    description: 'Staff type (default: staff)',
+                    example: 'staff'
+                }
+            }
+        },
+        examples: {
+            'Create Staff with Username': {
+                value: {
+                    username: 'john.doe',
+                    branch_id: '565655',
+                    designation: 'Manager',
+                    permission: 'admin',
+                    type: 'staff'
+                }
+            },
+            'Create Staff with Email': {
+                value: {
+                    email: 'jane.smith@example.com',
+                    branch_id: '565655',
+                    designation: 'Employee',
+                    permission: 'employee',
+                    type: 'staff'
+                }
+            }
+        }
     } */
     /* #swagger.responses[200] = {
         description: 'Staff assigned to branch successfully (or already assigned)',
-        schema: { $ref: '#/definitions/ApiResponse' }
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: true
+                },
+                message: {
+                    type: 'string',
+                    example: 'Staff assigned to branch successfully'
+                },
+                data: {
+                    type: 'object',
+                    properties: {
+                        username: {
+                            type: 'string',
+                            example: 'john.doe'
+                        },
+                        branch_id: {
+                            type: 'string',
+                            example: '565655'
+                        },
+                        map_id: {
+                            type: 'string',
+                            example: 'abc123xyz456def789'
+                        },
+                        mappedNow: {
+                            type: 'boolean',
+                            example: true
+                        }
+                    }
+                }
+            }
+        }
+    } */
+    /* #swagger.responses[400] = {
+        description: 'Missing required parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Missing required parameters (username or email, branch_id)' }
+            }
+        }
+    } */
+    /* #swagger.responses[404] = {
+        description: 'User not found',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'User not found. Create the user first, then assign to branch.' }
+            }
+        }
     } */
     try {
         const { username, email, branch_id, designation, permission, type='staff' } = req.body || {};
@@ -276,6 +384,50 @@ router.post('/create', auth, async (req, res) => {
 });
 
 router.get('/list', auth, async (req, res) => {
+    // #swagger.tags = ['Settings']
+    // #swagger.summary = 'Get staff list for a branch'
+    // #swagger.description = 'Retrieve all staff members assigned to a specific branch'
+    // #swagger.security = [{ "bearerAuth": [] }]
+    /* #swagger.parameters['branch_id'] = {
+        in: 'query',
+        description: 'Branch ID to filter staff members',
+        required: true,
+        type: 'string',
+        example: '565655'
+    } */
+    /* #swagger.responses[200] = {
+        description: 'Staff list retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: {
+                    type: 'boolean',
+                    example: true
+                },
+                message: {
+                    type: 'string',
+                    example: 'Staff list retrieved successfully'
+                },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            map_id: { type: 'string', example: 'abc123xyz456' },
+                            username: { type: 'string', example: 'john.doe' },
+                            designation: { type: 'string', example: 'Manager' },
+                            modify_date: { type: 'string', example: '2025-12-18 14:24:19' },
+                            modify_by: { type: 'string', example: 'admin' },
+                            type: { type: 'string', example: 'admin' },
+                            is_accepted: { type: 'string', example: '1' },
+                            status: { type: 'string', example: '1' },
+                            is_deleted: { type: 'string', example: '0' }
+                        }
+                    }
+                }
+            }
+        }
+    } */
     try {
         const { branch_id } = req.query;
         const [rows] = await pool.query(
@@ -306,7 +458,14 @@ router.post('/delete', auth, async (req, res) => {
                 map_id: {
                     type: 'string',
                     description: 'The map_id of the staff member to delete',
-                    example: 'abc123xyz456'
+                    example: 'abc123xyz456def789'
+                }
+            }
+        },
+        examples: {
+            'Delete Staff': {
+                value: {
+                    map_id: 'abc123xyz456def789'
                 }
             }
         }
@@ -371,7 +530,13 @@ router.get('/profile', auth, async (req, res) => {
         description: 'Username of the staff member',
         required: true,
         type: 'string',
-        example: 'john.doe'
+        example: 'john.doe',
+        examples: {
+            'Get Profile': {
+                value: 'john.doe',
+                summary: 'Get profile for john.doe'
+            }
+        }
     } */
     /* #swagger.responses[200] = {
         description: 'Staff profile retrieved successfully',
