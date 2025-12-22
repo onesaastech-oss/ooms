@@ -36,6 +36,152 @@ export function findRouteFiles(dir, routeFiles = []) {
 }
 
 /**
+ * Parse Swagger comments from file content for a specific route
+ */
+export function parseSwaggerComments(content, routePath, method) {
+    try {
+        const methodLower = method.toLowerCase();
+        const escapedPath = routePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const routePattern = `router\\.${methodLower}\\s*\\(\\s*["'\`]${escapedPath}["'\`]`;
+        
+        // Find all occurrences of this route pattern
+        const regex = new RegExp(routePattern, 'i');
+        const matches = [...content.matchAll(regex)];
+        if (matches.length === 0) return {};
+        
+        // Use the first match
+        const match = matches[0];
+        const routeStartIndex = match.index;
+        
+        // Get content before the route (up to 2000 chars) to find swagger comments
+        // Look backwards to find the start of the route handler (previous router. or function start)
+        let searchStart = Math.max(0, routeStartIndex - 2000);
+        // Try to find the beginning of this route handler by looking for previous router. or async function
+        const beforeRoute = content.substring(searchStart, routeStartIndex);
+        const handlerStart = beforeRoute.lastIndexOf('router.') || beforeRoute.lastIndexOf('async');
+        if (handlerStart > 0) {
+            searchStart = routeStartIndex - (beforeRoute.length - handlerStart);
+        }
+        const routeBlock = content.substring(searchStart, routeStartIndex + 1000);
+        
+        const swaggerData = {};
+        
+        // Parse tags
+        const tagsMatch = routeBlock.match(/\/\/\s*#swagger\.tags\s*=\s*\[(.*?)\]/);
+        if (tagsMatch) {
+            try {
+                swaggerData.tags = JSON.parse(tagsMatch[1]);
+            } catch (e) {}
+        }
+        
+        // Parse summary
+        const summaryMatch = routeBlock.match(/\/\/\s*#swagger\.summary\s*=\s*['"](.*?)['"]/);
+        if (summaryMatch) {
+            swaggerData.summary = summaryMatch[1];
+        }
+        
+        // Parse description
+        const descMatch = routeBlock.match(/\/\/\s*#swagger\.description\s*=\s*['"](.*?)['"]/);
+        if (descMatch) {
+            swaggerData.description = descMatch[1];
+        }
+        
+        // Parse security
+        const securityMatch = routeBlock.match(/\/\/\s*#swagger\.security\s*=\s*(\[.*?\])/);
+        if (securityMatch) {
+            try {
+                swaggerData.security = JSON.parse(securityMatch[1]);
+            } catch (e) {}
+        }
+        
+        // Parse body parameters - look for example in schema
+        const bodyParamRegex = /\/\*\s*#swagger\.parameters\['body'\]\s*=\s*\{([\s\S]*?)\}\s*\*\//;
+        const bodyMatch = routeBlock.match(bodyParamRegex);
+        if (bodyMatch) {
+            const bodyContent = bodyMatch[1];
+            
+            // Extract schema block
+            const schemaMatch = bodyContent.match(/schema:\s*\{([\s\S]*?)\}(?=\s*$|\s*\})/);
+            if (schemaMatch) {
+                const schemaContent = schemaMatch[1];
+                
+                // Extract properties
+                const propsMatch = schemaContent.match(/properties:\s*\{([\s\S]*?)\}(?=\s*,|\s*example|\s*required|\s*\})/);
+                let properties = {};
+                if (propsMatch) {
+                    try {
+                        const propsContent = propsMatch[1];
+                        // Extract each property: name: { type: 'string', example: 'value' }
+                        const propRegex = /(\w+):\s*\{([^}]*?)\}/g;
+                        let propMatch;
+                        while ((propMatch = propRegex.exec(propsContent)) !== null) {
+                            const propName = propMatch[1];
+                            const propDef = propMatch[2];
+                            const typeMatch = propDef.match(/type:\s*['"](.*?)['"]/);
+                            const exampleMatch = propDef.match(/example:\s*['"](.*?)['"]/);
+                            properties[propName] = {
+                                type: typeMatch ? typeMatch[1] : 'string'
+                            };
+                            if (exampleMatch) {
+                                properties[propName].example = exampleMatch[1];
+                            }
+                        }
+                    } catch (e) {}
+                }
+                
+                // Extract example from schema (look for example: { ... } inside schema)
+                // Match example: { key: 'value', key2: 'value2' }
+                const exampleMatch = schemaContent.match(/example:\s*\{([\s\S]*?)\}(?=\s*\}|\s*$)/);
+                if (exampleMatch) {
+                    try {
+                        // Use Function constructor to safely parse JS object literal
+                        const exampleStr = exampleMatch[1].trim();
+                        // Clean up whitespace
+                        const cleanStr = exampleStr.replace(/\s+/g, ' ').trim();
+                        // Use Function constructor (safer than eval, but still be careful)
+                        const exampleObj = new Function('return {' + cleanStr + '}')();
+                        
+                        swaggerData.bodySchema = {
+                            type: 'object',
+                            example: exampleObj
+                        };
+                        
+                        if (Object.keys(properties).length > 0) {
+                            swaggerData.bodySchema.properties = properties;
+                        }
+                        
+                        // Extract required
+                        const requiredMatch = schemaContent.match(/required:\s*\[(.*?)\]/);
+                        if (requiredMatch) {
+                            try {
+                                const requiredStr = requiredMatch[1].replace(/'/g, '"');
+                                swaggerData.bodySchema.required = JSON.parse('[' + requiredStr + ']');
+                            } catch (e) {}
+                        }
+                    } catch (e) {
+                        // If parsing fails, create schema with properties only
+                        swaggerData.bodySchema = {
+                            type: 'object',
+                            properties: properties
+                        };
+                    }
+                } else if (Object.keys(properties).length > 0) {
+                    // If no example but we have properties, create schema from properties
+                    swaggerData.bodySchema = {
+                        type: 'object',
+                        properties: properties
+                    };
+                }
+            }
+        }
+        
+        return swaggerData;
+    } catch (error) {
+        return {};
+    }
+}
+
+/**
  * Extract route information from a route file
  */
 export function extractRouteInfo(filePath) {
@@ -49,10 +195,12 @@ export function extractRouteInfo(filePath) {
         
         while ((match = routeRegex.exec(content)) !== null) {
             const [, method, route] = match;
+            const swaggerData = parseSwaggerComments(content, route, method);
             routes.push({
                 method: method.toUpperCase(),
                 path: route,
-                file: path.relative(path.join(__dirname, '..'), filePath)
+                file: path.relative(path.join(__dirname, '..'), filePath),
+                swagger: swaggerData
             });
         }
         

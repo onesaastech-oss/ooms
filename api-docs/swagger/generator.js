@@ -150,7 +150,9 @@ export class SwaggerGenerator {
             }
 
             for (const route of routes) {
-                const fullPath = this.buildFullPath(route.path);
+                // Build full path including mount prefix from file location
+                const mountPath = this.getMountPathFromFile(filePath);
+                const fullPath = this.buildFullPath(mountPath + route.path);
                 const method = route.method.toLowerCase();
 
                 // Initialize path object if it doesn't exist
@@ -160,6 +162,18 @@ export class SwaggerGenerator {
 
                 // Get route-specific configuration
                 const routeConfig = routeConfigs[route.path]?.[method] || {};
+                
+                // Merge parsed swagger comments
+                if (route.swagger) {
+                    if (route.swagger.summary) routeConfig.summary = route.swagger.summary;
+                    if (route.swagger.description) routeConfig.description = route.swagger.description;
+                    if (route.swagger.security) routeConfig.security = route.swagger.security;
+                    if (route.swagger.bodySchema) routeConfig.bodySchema = route.swagger.bodySchema;
+                    if (route.swagger.tags && route.swagger.tags.length > 0) {
+                        // Use tag from swagger comment if available
+                        tag = route.swagger.tags[0];
+                    }
+                }
 
                 // Generate method documentation
                 paths[fullPath][method] = generateMethodDoc(
@@ -181,6 +195,27 @@ export class SwaggerGenerator {
     }
 
     /**
+     * Get mount path from file location
+     */
+    getMountPathFromFile(filePath) {
+        const routesDir = path.join(__dirname, '..', '..', 'routes');
+        const relativePath = path.relative(routesDir, filePath);
+        const dirPath = path.dirname(relativePath);
+        
+        // Map file locations to mount paths
+        if (filePath.includes('settings/staff.routes.js')) {
+            return '/settings/staff';
+        }
+        if (filePath.includes('settings/permission.routes.js')) {
+            return '/settings/permission';
+        }
+        if (dirPath !== '.' && dirPath !== 'routes') {
+            return `/${dirPath.replace(/\\/g, '/')}`;
+        }
+        return '';
+    }
+
+    /**
      * Build full API path with base path
      */
     buildFullPath(routePath) {
@@ -192,6 +227,11 @@ export class SwaggerGenerator {
         // Handle paths that already include /api/v1
         if (routePath.startsWith('/api/v1')) {
             return routePath;
+        }
+        
+        // Ensure routePath starts with /
+        if (!routePath.startsWith('/')) {
+            routePath = '/' + routePath;
         }
         
         // Add /api/v1 prefix

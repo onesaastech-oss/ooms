@@ -15,115 +15,37 @@ router.get('/list', async (req, res) => {
     // #swagger.description = 'Retrieve all permission roles (Admin, Manager, Employee, etc.) with their assigned permissions. Optionally filter by branch_id.'
     /* #swagger.parameters['branch_id'] = {
         in: 'query',
-        description: 'Optional branch ID to filter permission roles',
         required: false,
         type: 'string',
-        example: '565655',
-        examples: {
-            'All Roles': {
-                value: null,
-                summary: 'Get all permission roles'
-            },
-            'Filter by Branch': {
-                value: '565655',
-                summary: 'Get roles for specific branch'
-            }
-        }
+        example: '565655'
     } */
     /* #swagger.responses[200] = {
-        description: 'Permission roles retrieved successfully',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: true
-                },
-                message: {
-                    type: 'string',
-                    example: 'Permission roles retrieved successfully'
-                },
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Permission roles retrieved successfully' },
                 data: {
                     type: 'array',
                     items: {
                         type: 'object',
                         properties: {
-                            id: {
-                                type: 'integer',
-                                example: 1
-                            },
-                            branch_id: {
-                                type: 'string',
-                                example: '565655'
-                            },
-                            permission_role_id: {
-                                type: 'string',
-                                example: '25225'
-                            },
-                            name: {
-                                type: 'string',
-                                example: 'Admin'
-                            },
-                            permissions: {
-                                type: 'object',
-                                description: 'Parsed JSON permissions object',
-                                example: {
-                                    permissions: [
-                                        {
-                                            p_option_id: 1000,
-                                            name: 'View Dashboard',
-                                            status: '1'
-                                        }
-                                    ]
-                                }
-                            },
-                            remark: {
-                                type: 'string',
-                                example: 'Administrator role with full access'
-                            },
-                            create_date: {
-                                type: 'string',
-                                example: '2025-12-18 14:24:19'
-                            },
-                            create_by: {
-                                type: 'string',
-                                example: 'admin'
-                            },
-                            modify_date: {
-                                type: 'string',
-                                example: '2025-12-18 09:27:19'
-                            },
-                            modify_by: {
-                                type: 'string',
-                                example: 'admin'
-                            }
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Admin' },
+                            permissions: { type: 'object', example: { permissions: [] } }
                         }
                     }
                 },
-                total: {
-                    type: 'integer',
-                    example: 2
-                }
+                total: { type: 'integer', example: 2 }
             }
         }
     } */
     /* #swagger.responses[500] = {
-        description: 'Internal server error',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: false
-                },
-                message: {
-                    type: 'string',
-                    example: 'Failed to retrieve permission roles'
-                },
-                error: {
-                    type: 'string',
-                    example: 'Error message details'
-                }
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Failed to retrieve permission roles' }
             }
         }
     } */
@@ -194,82 +116,37 @@ router.get('/options', async (req, res) => {
     // #swagger.description = 'Retrieve all available permission options that can be assigned to roles. Optionally filter by branch_id.'
     /* #swagger.parameters['branch_id'] = {
         in: 'query',
-        description: 'Optional branch ID to filter permission options',
         required: false,
         type: 'string',
-        example: '565655',
-        examples: {
-            'All Options': {
-                value: null,
-                summary: 'Get all permission options'
-            },
-            'Filter by Branch': {
-                value: '565655',
-                summary: 'Get options for specific branch'
-            }
-        }
+        example: '565655'
     } */
     /* #swagger.responses[200] = {
-        description: 'Permission options retrieved successfully',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: true
-                },
-                message: {
-                    type: 'string',
-                    example: 'Permission options retrieved successfully'
-                },
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Permission options retrieved successfully' },
                 data: {
                     type: 'array',
                     items: {
                         type: 'object',
                         properties: {
-                            id: {
-                                type: 'integer',
-                                example: 1
-                            },
-                            p_option_id: {
-                                type: 'integer',
-                                example: 1000
-                            },
-                            name: {
-                                type: 'string',
-                                example: 'View Dashboard'
-                            },
-                            status: {
-                                type: 'string',
-                                example: '1'
-                            }
+                            id: { type: 'integer', example: 1 },
+                            p_option_id: { type: 'integer', example: 1000 },
+                            name: { type: 'string', example: 'View Dashboard' }
                         }
                     }
                 },
-                total: {
-                    type: 'integer',
-                    example: 10
-                }
+                total: { type: 'integer', example: 10 }
             }
         }
     } */
     /* #swagger.responses[500] = {
-        description: 'Internal server error',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: false
-                },
-                message: {
-                    type: 'string',
-                    example: 'Failed to retrieve permission roles'
-                },
-                error: {
-                    type: 'string',
-                    example: 'Error message details'
-                }
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Failed to retrieve permission roles' }
             }
         }
     } */
@@ -324,106 +201,46 @@ router.post('/create', async (req, res) => {
     // #swagger.description = 'Create a new permission option that can be assigned to roles'
     /* #swagger.parameters['body'] = {
         in: 'body',
-        description: 'Permission option creation payload',
         required: true,
         schema: {
             type: 'object',
             required: ['name', 'p_option_id'],
             properties: {
-                name: {
-                    type: 'string',
-                    description: 'Name of the permission option',
-                    example: 'View Dashboard'
-                },
-                p_option_id: {
-                    type: 'integer',
-                    description: 'Permission option ID',
-                    example: 1000
-                },
-                branch_id: {
-                    type: 'string',
-                    description: 'Branch ID (optional)',
-                    example: '565655'
-                },
-                status: {
-                    type: 'string',
-                    description: 'Status of the permission option (default: 1)',
-                    example: '1'
-                }
-            }
-        },
-        examples: {
-            'Create Permission Option': {
-                value: {
-                    name: 'View Dashboard',
-                    p_option_id: 1000,
-                    branch_id: '565655',
-                    status: '1'
-                },
-                summary: 'Create a new permission option'
+                name: { type: 'string', example: 'View Dashboard' },
+                p_option_id: { type: 'integer', example: 1000 },
+                branch_id: { type: 'string', example: '565655' }
             },
-            'Create with Minimal Data': {
-                value: {
-                    name: 'Edit Settings',
-                    p_option_id: 1001
-                },
-                summary: 'Create permission option with required fields only'
+            example: {
+                name: 'View Dashboard',
+                p_option_id: 1000,
+                branch_id: '565655'
             }
         }
     } */
     /* #swagger.responses[200] = {
-        description: 'Permission option created successfully',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: true
-                },
-                message: {
-                    type: 'string',
-                    example: 'Permission option created successfully'
-                },
-                data: {
-                    type: 'object',
-                    description: 'Created permission option data'
-                }
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Permission option created successfully' }
             }
         }
     } */
     /* #swagger.responses[400] = {
-        description: 'Missing required parameters',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: false
-                },
-                message: {
-                    type: 'string',
-                    example: 'Missing required parameters (name, p_option_id)'
-                }
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Missing required parameters' }
             }
         }
     } */
     /* #swagger.responses[500] = {
-        description: 'Internal server error',
         schema: {
             type: 'object',
             properties: {
-                success: {
-                    type: 'boolean',
-                    example: false
-                },
-                message: {
-                    type: 'string',
-                    example: 'Failed to create permission option'
-                },
-                error: {
-                    type: 'string',
-                    example: 'Error message details'
-                }
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Failed to create permission option' }
             }
         }
     } */

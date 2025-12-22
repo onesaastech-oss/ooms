@@ -27,7 +27,7 @@ if (isWatchMode) {
         if (result.success) {
             console.log('✅ Swagger documentation generated successfully!');
             console.log(`📄 Documentation saved to: swagger-output.json`);
-            console.log(`🌐 View at: http://localhost:3000/api-docs\n`);
+            console.log(`🌐 View at: http://localhost:8877/api-docs\n`);
             process.exit(0);
         } else {
             console.error('❌ Failed to generate documentation:', result.error);

@@ -316,16 +316,88 @@ export const routeConfigs = {
     },
 
     // Settings routes (staff mapping)
-    '/create-staff': {
+    '/create': {
         post: {
             summary: 'Create staff mapping (assign existing user to a branch)',
-            description: 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).',
+            description: 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping',
             useEncryption: false,
-            bodySchema: { $ref: '#/definitions/CreateStaffRequest' },
+            bodySchema: {
+                type: 'object',
+                required: ['branch_id'],
+                properties: {
+                    username: { type: 'string', example: 'john.doe' },
+                    email: { type: 'string', example: 'john.doe@example.com' },
+                    branch_id: { type: 'string', example: '565655' },
+                    designation: { type: 'string', example: 'Manager' },
+                    permission: { type: 'string', example: 'admin' }
+                },
+                example: {
+                    username: 'john.doe',
+                    branch_id: '565655',
+                    designation: 'Manager',
+                    permission: 'admin'
+                }
+            },
             responses: {
                 200: {
-                    description: 'Staff assigned to branch successfully (or already assigned)',
+                    description: 'Staff assigned to branch successfully',
                     schema: { $ref: '#/definitions/ApiResponse' }
+                }
+            }
+        }
+    },
+    '/delete': {
+        post: {
+            summary: 'Delete staff member',
+            description: 'Soft delete a staff member by setting is_deleted flag',
+            useEncryption: false,
+            bodySchema: {
+                type: 'object',
+                required: ['map_id'],
+                properties: {
+                    map_id: { type: 'string', example: 'abc123xyz456' }
+                },
+                example: {
+                    map_id: 'abc123xyz456'
+                }
+            }
+        }
+    },
+    '/list': {
+        get: {
+            summary: 'Get staff list for a branch',
+            description: 'Retrieve all staff members assigned to a specific branch'
+        }
+    },
+    '/permission/list': {
+        get: {
+            summary: 'Get permission roles list',
+            description: 'Retrieve all permission roles with their assigned permissions'
+        }
+    },
+    '/permission/options': {
+        get: {
+            summary: 'Get permission options list',
+            description: 'Retrieve all available permission options'
+        }
+    },
+    '/permission/create': {
+        post: {
+            summary: 'Create permission option',
+            description: 'Create a new permission option that can be assigned to roles',
+            useEncryption: false,
+            bodySchema: {
+                type: 'object',
+                required: ['name', 'p_option_id'],
+                properties: {
+                    name: { type: 'string', example: 'View Dashboard' },
+                    p_option_id: { type: 'integer', example: 1000 },
+                    branch_id: { type: 'string', example: '565655' }
+                },
+                example: {
+                    name: 'View Dashboard',
+                    p_option_id: 1000,
+                    branch_id: '565655'
                 }
             }
         }
