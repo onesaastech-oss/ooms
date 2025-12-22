@@ -30,9 +30,21 @@ router.get('/list', async (req, res) => {
                     items: {
                         type: 'object',
                         properties: {
-                            id: { type: 'integer', example: 1 },
-                            name: { type: 'string', example: 'Admin' },
-                            permissions: { type: 'object', example: { permissions: [] } }
+                            name: { type: 'string', example: 'Manager' },
+                            permissions: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        p_option_id: { type: 'integer', example: 1000 },
+                                        key: { type: 'string', example: 'create task' }
+                                    }
+                                },
+                                example: [
+                                    { p_option_id: 1000, key: 'create task' },
+                                    { p_option_id: 1002, key: 'complete task' }
+                                ]
+                            }
                         }
                     }
                 },
@@ -52,7 +64,7 @@ router.get('/list', async (req, res) => {
     try {
         const { branch_id } = req.query;
         
-        let query = "SELECT id, branch_id, permission_role_id, name, permissions_assigned, remark, create_date, create_by, modify_date, modify_by FROM permission_role";
+        let query = "SELECT name, permissions_assigned FROM permission_role";
         let params = [];
         
         // Optionally filter by branch_id if provided
@@ -65,33 +77,32 @@ router.get('/list', async (req, res) => {
         
         const [rows] = await pool.query(query, params);
         
-        // Parse permissions_assigned JSON for each role
+        // Parse permissions_assigned JSON for each role and return simplified response
         const rolesWithPermissions = rows.map(role => {
-            let permissions = null;
+            let permissionsArray = [];
             
             // Try to parse the permissions_assigned JSON string
             if (role.permissions_assigned) {
                 try {
-                    permissions = typeof role.permissions_assigned === 'string' 
+                    const parsed = typeof role.permissions_assigned === 'string' 
                         ? JSON.parse(role.permissions_assigned) 
                         : role.permissions_assigned;
+                    
+                    // Extract permissions array from the parsed object
+                    if (parsed && parsed.permissions && Array.isArray(parsed.permissions)) {
+                        permissionsArray = parsed.permissions;
+                    } else if (Array.isArray(parsed)) {
+                        permissionsArray = parsed;
+                    }
                 } catch (parseError) {
                     console.warn(`Failed to parse permissions for role ${role.name}:`, parseError);
-                    permissions = null;
+                    permissionsArray = [];
                 }
             }
             
             return {
-                id: role.id,
-                branch_id: role.branch_id,
-                permission_role_id: role.permission_role_id,
                 name: role.name,
-                permissions: permissions,
-                remark: role.remark,
-                create_date: role.create_date,
-                create_by: role.create_by,
-                modify_date: role.modify_date,
-                modify_by: role.modify_by
+                permissions: permissionsArray
             };
         });
         
