@@ -74,7 +74,7 @@ async function insertRow(tableName, data) {
  *       500:
  *         description: Internal server error
  */
-router.get('/', (req, res) => {
+router.get('/settings-list', (req, res) => {
     try {
         const settingsList = [
             {
@@ -179,7 +179,7 @@ router.get('/', (req, res) => {
     }
 });
 
-router.post('/create-staff', auth, async (req, res) => {
+router.post('/create', auth, async (req, res) => {
     // #swagger.tags = ['Settings']
     // #swagger.summary = 'Create staff mapping (assign existing user to a branch)'
     // #swagger.description = 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).'
@@ -275,7 +275,7 @@ router.post('/create-staff', auth, async (req, res) => {
     }
 });
 
-router.get('/staff-list', auth, async (req, res) => {
+router.get('/list', auth, async (req, res) => {
     try {
         const { branch_id } = req.query;
         const [rows] = await pool.query(
@@ -290,7 +290,7 @@ router.get('/staff-list', auth, async (req, res) => {
     }
 });
 
-router.post('/delete-staff', auth, async (req, res) => {
+router.post('/delete', auth, async (req, res) => {
     // #swagger.tags = ['Settings']
     // #swagger.summary = 'Delete staff member'
     // #swagger.description = 'Soft delete a staff member by setting is_deleted flag to 1 in branch_mapping table'
@@ -361,7 +361,7 @@ router.post('/delete-staff', auth, async (req, res) => {
     }
 });
 
-router.get('/staff-profile', auth, async (req, res) => {
+router.get('/profile', auth, async (req, res) => {
     // #swagger.tags = ['Settings']
     // #swagger.summary = 'Get staff profile'
     // #swagger.description = 'Retrieve profile information for a staff member by username'
