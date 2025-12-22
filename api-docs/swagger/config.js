@@ -17,7 +17,7 @@ export const swaggerConfig = {
             url: 'https://opensource.org/licenses/MIT'
         }
     },
-    host: 'localhost:8877',
+    host: 'api.ooms.in/',
     basePath: '/api/v1',
     schemes: ['http', 'https'],
     consumes: ['application/json', 'multipart/form-data'],
