@@ -6,8 +6,8 @@ import clientRoutes from "./clients/client.routes.js";
 import taskRoutes from "./tasks/task.routes.js";
 import uploadRoutes from "./uploads/upload.routes.js";
 import mediaRoutes from "./media/media.routes.js";
-import settingsRoutes from "./settings/staff.js";
-import permissionRoutes from "./settings/permission.js";
+import settingsRoutes from "./settings/staff.routes.js";
+import permissionRoutes from "./settings/permission.routes.js";
 import webhookRoutes from "./webhook/webhook.routes.js";
 
 router.use("/auth", authRoutes);
