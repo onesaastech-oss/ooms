@@ -2,6 +2,11 @@ import crypto from "crypto";
 import { PUBLIC_KEY } from "./RSAKeys.js";
 
 function Encrypt(payload) {
+    if (!PUBLIC_KEY) {
+        console.warn('RSA public key not available, storing password as plain text');
+        return payload; // Return plain text if no encryption available
+    }
+
     const plainText = JSON.stringify(payload);
 
     // ✅ Generate AES key (128-bit)

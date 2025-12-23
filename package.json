@@ -10,7 +10,12 @@
     "swagger:verbose": "node api-docs/swagger-generate.js --verbose",
     "dev": "concurrently \"nodemon server.js\" \"node api-docs/swagger-generate.js --watch\"",
     "dev:server": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate": "node database/migrate.js",
+    "verify-tables": "node database/verify-tables.js",
+    "worker": "node workers/email-broadcast-worker.js",
+    "dev:worker": "nodemon workers/email-broadcast-worker.js",
+    "dev:full": "concurrently \"nodemon server.js\" \"nodemon workers/email-broadcast-worker.js\" \"node api-docs/swagger-generate.js --watch\""
   },
   "keywords": [],
   "author": "",
