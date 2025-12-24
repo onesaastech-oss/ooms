@@ -11,6 +11,8 @@ import permissionRoutes from "./settings/permission.routes.js";
 import webhookRoutes from "./webhook/webhook.routes.js";
 import emailBroadcastRoutes from "./broadcast/email.routes.js";
 import groupRoutes from "./groups/group.routes.js";
+import firmsRoutes from "./firms/firms.routes.js";
+import servicesRoutes from "./services/services.routes.js";
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
 router.use("/tasks", taskRoutes);
@@ -21,6 +23,8 @@ router.use("/settings/permission", permissionRoutes);
 router.use("/webhook", webhookRoutes);
 router.use("/broadcast/email", emailBroadcastRoutes);
 router.use("/groups", groupRoutes);
+router.use("/services", servicesRoutes);
+router.use("/firms", firmsRoutes);
 // Static chat media files
 router.use("/chat-media", express.static(path.join(process.cwd(), "/media/chat")));
 
