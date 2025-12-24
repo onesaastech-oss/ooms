@@ -10,7 +10,7 @@ import settingsRoutes from "./settings/staff.routes.js";
 import permissionRoutes from "./settings/permission.routes.js";
 import webhookRoutes from "./webhook/webhook.routes.js";
 import emailBroadcastRoutes from "./broadcast/email.routes.js";
-
+import groupRoutes from "./groups/group.routes.js";
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
 router.use("/tasks", taskRoutes);
@@ -20,6 +20,7 @@ router.use("/settings/staff", settingsRoutes);
 router.use("/settings/permission", permissionRoutes);
 router.use("/webhook", webhookRoutes);
 router.use("/broadcast/email", emailBroadcastRoutes);
+router.use("/groups", groupRoutes);
 // Static chat media files
 router.use("/chat-media", express.static(path.join(process.cwd(), "/media/chat")));
 

@@ -740,8 +740,9 @@ router.post('/send', auth, async (req, res) => {
       plain_text,
       template_id,
       config_id,
-      recipient_type, // all_users, role_based, uploaded_list
-      recipient_filter, // { roles: [], emails: [] }
+      recipient_type, // all_users, role_based, uploaded_list, all_clients, group
+      recipient_filter, // { roles: [], emails: [], group_id: '' }
+      group_id, // For group recipient_type
       attachment_urls,
       batch_size = 100,
       batch_delay_seconds = 3
@@ -757,11 +758,27 @@ router.post('/send', auth, async (req, res) => {
       });
     }
 
-    if (!recipient_type || !['all_users', 'role_based', 'uploaded_list'].includes(recipient_type)) {
+    if (!recipient_type || !['all_users', 'role_based', 'uploaded_list', 'all_clients', 'group'].includes(recipient_type)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid recipient_type. Must be: all_users, role_based, or uploaded_list'
+        message: 'Invalid recipient_type. Must be: all_users, role_based, uploaded_list, all_clients, or group'
       });
+    }
+
+    // Validate group_id if recipient_type is 'group'
+    if (recipient_type === 'group') {
+      const finalGroupId = group_id || (recipient_filter && recipient_filter.group_id);
+      if (!finalGroupId) {
+        return res.status(400).json({
+          success: false,
+          message: 'group_id is required when recipient_type is "group"'
+        });
+      }
+      // Ensure group_id is included in recipient_filter
+      if (!recipient_filter) {
+        recipient_filter = {};
+      }
+      recipient_filter.group_id = finalGroupId;
     }
 
     // If template is provided, load it

@@ -188,6 +188,15 @@ class EmailBroadcastQueue extends EventEmitter {
         );
         recipients.push(...users);
       } 
+      else if (broadcast.recipient_type === 'all_clients') {
+        // Get all active clients (not deleted, with email)
+        // Note: is_deleted and status are ENUM('0','1') fields, so use string values
+        const [clients] = await pool.query(
+          'SELECT email, name FROM clients WHERE is_deleted = ? AND status = ? AND email IS NOT NULL AND email != ""',
+          ['0', '1']
+        );
+        recipients.push(...clients);
+      }
       else if (broadcast.recipient_type === 'role_based') {
         // Get users by roles
         const roles = recipientFilter.roles || [];
@@ -216,6 +225,65 @@ class EmailBroadcastQueue extends EventEmitter {
           }
           return null;
         }).filter(Boolean));
+      }
+      else if (broadcast.recipient_type === 'group') {
+        // Get recipients from a group
+        // Flow: group_id -> group_firms (firm_ids) -> firms (usernames) -> users (emails)
+        const groupId = recipientFilter.group_id;
+        
+        if (!groupId) {
+          console.error('group_id is required for group recipient_type');
+          return recipients;
+        }
+
+        // Step 1: Get all firm_ids from group_firms table for this group
+        const [groupFirms] = await pool.query(
+          `SELECT firm_id 
+           FROM group_firms 
+           WHERE group_id = ? AND (is_deleted = ? OR is_deleted = 0)`,
+          [groupId, '0']
+        );
+
+        if (groupFirms.length === 0) {
+          console.log(`No firms found in group ${groupId}`);
+          return recipients;
+        }
+
+        const firmIds = groupFirms.map(gf => gf.firm_id);
+
+        // Step 2: Get usernames from firms table
+        const placeholders = firmIds.map(() => '?').join(',');
+        const [firms] = await pool.query(
+          `SELECT DISTINCT username 
+           FROM firms 
+           WHERE firm_id IN (${placeholders}) 
+           AND (is_deleted = ? OR is_deleted = 0) 
+           AND (status = ? OR status = 1) 
+           AND username IS NOT NULL 
+           AND username != ''`,
+          [...firmIds, '0', '1']
+        );
+
+        if (firms.length === 0) {
+          console.log(`No active firms with usernames found in group ${groupId}`);
+          return recipients;
+        }
+
+        const usernames = firms.map(f => f.username);
+
+        // Step 3: Get user emails from users table
+        const userPlaceholders = usernames.map(() => '?').join(',');
+        const [users] = await pool.query(
+          `SELECT email, CONCAT(first_name, " ", last_name) as name 
+           FROM users 
+           WHERE username IN (${userPlaceholders}) 
+           AND status = ? 
+           AND email IS NOT NULL 
+           AND email != ""`,
+          [...usernames, '1']
+        );
+
+        recipients.push(...users);
       }
     } catch (error) {
       console.error('Error fetching recipients:', error);
