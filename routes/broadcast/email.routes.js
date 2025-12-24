@@ -12,7 +12,7 @@ const router = express.Router();
 
 import pool from '../../db.js';
 import { auth } from '../../middleware/auth.js';
-import { RANDOM_STRING, UNIX_TIMESTAMP } from '../../helpers/function.js';
+import { RANDOM_STRING } from '../../helpers/function.js';
 import { Encrypt } from '../../helpers/Encrypt.js';
 import { Decrypt } from '../../helpers/Decrypt.js';
 import EmailBroadcastQueue from '../../helpers/EmailBroadcastQueue.js';
@@ -153,7 +153,7 @@ router.post('/config', auth, async (req, res) => {
 
     // If setting as default, unset other defaults
     if (is_default) {
-      await pool.query('UPDATE email_configs SET is_default = 0, updated_at = ?', [UNIX_TIMESTAMP()]);
+      await pool.query('UPDATE email_configs SET is_default = 0, updated_at = CURRENT_TIMESTAMP');
     }
 
     // Store password - if encryption worked, store as JSON, otherwise store as plain text
@@ -161,9 +161,10 @@ router.post('/config', auth, async (req, res) => {
       ? JSON.stringify(encryptedPassword) 
       : encryptedPassword;
 
+    // Let DB defaults handle created_at/updated_at
     await pool.query(
-      'INSERT INTO email_configs (config_id, name, provider, host, port, username, password, from_name, from_email, is_default, is_enabled, rate_limit_per_minute, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [configId, name, provider, host, port, username, passwordToStore, from_name, from_email, is_default, 1, rate_limit_per_minute, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), createdBy]
+      'INSERT INTO email_configs (config_id, name, provider, host, port, username, password, from_name, from_email, is_default, is_enabled, rate_limit_per_minute, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [configId, name, provider, host, port, username, passwordToStore, from_name, from_email, is_default, 1, rate_limit_per_minute, createdBy]
     );
 
     res.json({
@@ -261,7 +262,7 @@ router.put('/config/:configId', auth, async (req, res) => {
       
       // If setting as default, unset other defaults
       if (is_default) {
-        await pool.query('UPDATE email_configs SET is_default = 0, updated_at = ? WHERE config_id != ?', [UNIX_TIMESTAMP(), configId]);
+        await pool.query('UPDATE email_configs SET is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE config_id != ?', [configId]);
       }
     }
     if (is_enabled !== undefined) {
@@ -280,8 +281,7 @@ router.put('/config/:configId', auth, async (req, res) => {
       });
     }
 
-    updates.push('updated_at = ?');
-    values.push(UNIX_TIMESTAMP());
+    updates.push('updated_at = CURRENT_TIMESTAMP');
     updates.push('updated_by = ?');
     values.push(updatedBy);
 
@@ -502,9 +502,10 @@ router.post('/templates', auth, async (req, res) => {
 
     const templateId = RANDOM_STRING(30);
 
+    // Let DB defaults handle created_at/updated_at
     await pool.query(
-      'INSERT INTO email_templates (template_id, name, subject, html_body, plain_text, variables, description, is_active, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [templateId, name, subject, html_body, plain_text, JSON.stringify(variables), description, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), createdBy]
+      'INSERT INTO email_templates (template_id, name, subject, html_body, plain_text, variables, description, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [templateId, name, subject, html_body, plain_text, JSON.stringify(variables), description, 1, createdBy]
     );
 
     res.json({
@@ -597,8 +598,7 @@ router.put('/templates/:templateId', auth, async (req, res) => {
       });
     }
 
-    updates.push('updated_at = ?');
-    values.push(UNIX_TIMESTAMP());
+    updates.push('updated_at = CURRENT_TIMESTAMP');
     updates.push('updated_by = ?');
     values.push(updatedBy);
 
@@ -851,8 +851,6 @@ router.post('/send', auth, async (req, res) => {
         batch_size,
         batch_delay_seconds,
         'queued',
-        UNIX_TIMESTAMP(),
-        UNIX_TIMESTAMP(),
         createdBy
       ]
     );

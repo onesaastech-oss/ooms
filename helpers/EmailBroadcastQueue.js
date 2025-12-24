@@ -5,7 +5,7 @@
  */
 
 import pool from '../db.js';
-import { RANDOM_STRING, UNIX_TIMESTAMP } from './function.js';
+import { RANDOM_STRING } from './function.js';
 import EventEmitter from 'events';
 
 class EmailBroadcastQueue extends EventEmitter {
@@ -113,8 +113,8 @@ class EmailBroadcastQueue extends EventEmitter {
 
       // Update status to processing
       await pool.query(
-        'UPDATE email_broadcasts SET status = ?, start_time = ?, updated_at = ? WHERE broadcast_id = ?',
-        ['processing', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), broadcastId]
+        'UPDATE email_broadcasts SET status = ?, start_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ?',
+        ['processing', broadcastId]
       );
 
       // Get recipients
@@ -122,8 +122,8 @@ class EmailBroadcastQueue extends EventEmitter {
       
       if (recipients.length === 0) {
         await pool.query(
-          'UPDATE email_broadcasts SET status = ?, error_message = ?, end_time = ?, updated_at = ? WHERE broadcast_id = ?',
-          ['failed', 'No recipients found', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), broadcastId]
+          'UPDATE email_broadcasts SET status = ?, error_message = ?, end_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ?',
+          ['failed', 'No recipients found', broadcastId]
         );
         console.log(`❌ No recipients found for broadcast ${broadcastId}`);
         return;
@@ -133,8 +133,8 @@ class EmailBroadcastQueue extends EventEmitter {
 
       // Update total recipients
       await pool.query(
-        'UPDATE email_broadcasts SET total_recipients = ?, queued_count = ?, updated_at = ? WHERE broadcast_id = ?',
-        [recipients.length, recipients.length, UNIX_TIMESTAMP(), broadcastId]
+        'UPDATE email_broadcasts SET total_recipients = ?, queued_count = ?, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ?',
+        [recipients.length, recipients.length, broadcastId]
       );
 
       // Process in batches
@@ -148,26 +148,23 @@ class EmailBroadcastQueue extends EventEmitter {
 
       const totalSent = stats[0]?.sent || 0;
       const totalFailed = stats[0]?.failed || 0;
-      const endTime = UNIX_TIMESTAMP();
-      const duration = endTime - broadcast.start_time;
-
       // Update broadcast with final stats
       await pool.query(
-        'UPDATE email_broadcasts SET status = ?, sent_count = ?, failed_count = ?, end_time = ?, duration_seconds = ?, updated_at = ? WHERE broadcast_id = ?',
-        ['completed', totalSent, totalFailed, endTime, duration, UNIX_TIMESTAMP(), broadcastId]
+        'UPDATE email_broadcasts SET status = ?, sent_count = ?, failed_count = ?, end_time = CURRENT_TIMESTAMP, duration_seconds = TIMESTAMPDIFF(SECOND, start_time, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ?',
+        ['completed', totalSent, totalFailed, broadcastId]
       );
 
       console.log(`\n✅ Broadcast ${broadcastId} completed!`);
-      console.log(`   Sent: ${totalSent}, Failed: ${totalFailed}, Duration: ${duration}s\n`);
+      console.log(`   Sent: ${totalSent}, Failed: ${totalFailed}\n`);
 
-      this.emit('broadcast_completed', { broadcastId, totalSent, totalFailed, duration });
+      this.emit('broadcast_completed', { broadcastId, totalSent, totalFailed });
 
     } catch (error) {
       console.error(`Error processing broadcast ${broadcastId}:`, error);
       
       await pool.query(
-        'UPDATE email_broadcasts SET status = ?, error_message = ?, end_time = ?, updated_at = ? WHERE broadcast_id = ?',
-        ['failed', error.message, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), broadcastId]
+        'UPDATE email_broadcasts SET status = ?, error_message = ?, end_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ?',
+        ['failed', error.message, broadcastId]
       );
     }
   }
@@ -334,21 +331,20 @@ class EmailBroadcastQueue extends EventEmitter {
    */
   async processBatch(broadcast, recipients, batchNumber) {
     const batchId = RANDOM_STRING(30);
-    const startTime = UNIX_TIMESTAMP();
 
     try {
       // Create batch record
       await pool.query(
-        'INSERT INTO email_broadcast_batches (batch_id, broadcast_id, batch_number, batch_size, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [batchId, broadcast.broadcast_id, batchNumber, recipients.length, 'processing', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()]
+        'INSERT INTO email_broadcast_batches (batch_id, broadcast_id, batch_number, batch_size, status, start_time) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+        [batchId, broadcast.broadcast_id, batchNumber, recipients.length, 'processing']
       );
 
       // Create log entries for all recipients
       for (const recipient of recipients) {
         const logId = RANDOM_STRING(30);
         await pool.query(
-          'INSERT INTO email_broadcast_logs (log_id, broadcast_id, batch_id, recipient_email, recipient_name, status, created_at, updated_at, max_retries) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [logId, broadcast.broadcast_id, batchId, recipient.email, recipient.name, 'queued', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), 3]
+          'INSERT INTO email_broadcast_logs (log_id, broadcast_id, batch_id, recipient_email, recipient_name, status, max_retries) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [logId, broadcast.broadcast_id, batchId, recipient.email, recipient.name, 'queued', 3]
         );
       }
 
@@ -367,8 +363,8 @@ class EmailBroadcastQueue extends EventEmitter {
           
           // Update log status
           await pool.query(
-            'UPDATE email_broadcast_logs SET status = ?, sent_at = ?, updated_at = ? WHERE broadcast_id = ? AND batch_id = ? AND recipient_email = ?',
-            ['sent', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), broadcast.broadcast_id, batchId, recipient.email]
+            'UPDATE email_broadcast_logs SET status = ?, sent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ? AND batch_id = ? AND recipient_email = ?',
+            ['sent', broadcast.broadcast_id, batchId, recipient.email]
           );
 
           process.stdout.write('.');
@@ -377,8 +373,8 @@ class EmailBroadcastQueue extends EventEmitter {
           
           // Update log with error
           await pool.query(
-            'UPDATE email_broadcast_logs SET status = ?, error_message = ?, updated_at = ? WHERE broadcast_id = ? AND batch_id = ? AND recipient_email = ?',
-            ['failed', error.message, UNIX_TIMESTAMP(), broadcast.broadcast_id, batchId, recipient.email]
+            'UPDATE email_broadcast_logs SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE broadcast_id = ? AND batch_id = ? AND recipient_email = ?',
+            ['failed', error.message, broadcast.broadcast_id, batchId, recipient.email]
           );
 
           process.stdout.write('x');
@@ -387,23 +383,20 @@ class EmailBroadcastQueue extends EventEmitter {
 
       console.log(''); // New line after progress dots
 
-      const endTime = UNIX_TIMESTAMP();
-      const processingTime = (endTime - startTime) * 1000; // Convert to ms
-
       // Update batch status
       await pool.query(
-        'UPDATE email_broadcast_batches SET status = ?, sent_count = ?, failed_count = ?, end_time = ?, processing_time_ms = ?, updated_at = ? WHERE batch_id = ?',
-        ['completed', sentCount, failedCount, endTime, processingTime, UNIX_TIMESTAMP(), batchId]
+        'UPDATE email_broadcast_batches SET status = ?, sent_count = ?, failed_count = ?, end_time = CURRENT_TIMESTAMP, processing_time_ms = (TIMESTAMPDIFF(MICROSECOND, start_time, CURRENT_TIMESTAMP) / 1000), updated_at = CURRENT_TIMESTAMP WHERE batch_id = ?',
+        ['completed', sentCount, failedCount, batchId]
       );
 
-      console.log(`✅ Batch ${batchNumber} completed: ${sentCount} sent, ${failedCount} failed (${processingTime}ms)`);
+      console.log(`✅ Batch ${batchNumber} completed: ${sentCount} sent, ${failedCount} failed`);
 
     } catch (error) {
       console.error(`Error processing batch ${batchNumber}:`, error);
       
       await pool.query(
-        'UPDATE email_broadcast_batches SET status = ?, error_message = ?, updated_at = ? WHERE batch_id = ?',
-        ['failed', error.message, UNIX_TIMESTAMP(), batchId]
+        'UPDATE email_broadcast_batches SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE batch_id = ?',
+        ['failed', error.message, batchId]
       );
     }
   }

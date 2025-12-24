@@ -1,13 +1,12 @@
 import express from "express";
 const router = express.Router();
 import pool from "../../db.js";
-import { FUTURE_UNIX_TIMESTAMP, GENERATE_PASSWORD, IS_STRONG_PASSWORD, RANDOM_INTEGER, RANDOM_STRING, UNIX_TIMESTAMP } from "../../helpers/function.js";
+import { GENERATE_PASSWORD, IS_STRONG_PASSWORD, RANDOM_INTEGER, RANDOM_STRING } from "../../helpers/function.js";
 import { Decrypt } from "../../helpers/Decrypt.js";
 import { auth } from "../../middleware/auth.js";
 import { APP_NAME, GOOGLE_CLIENT_ID } from "../../helpers/Config.js";
 import { OAuth2Client } from "google-auth-library";
 import { SendMail } from "../../helpers/Mail.js";
-import moment from "moment";
 
 router.post("/login/send-otp", async (req, res) => {
     // #swagger.tags = ['Authentication']
@@ -70,8 +69,6 @@ router.post("/login/send-otp", async (req, res) => {
         // OTP generation
         const otp_id = RANDOM_STRING();
         const otp = RANDOM_INTEGER(); // ensure this returns a numeric OTP (e.g., 6 digits)
-        const create_date = UNIX_TIMESTAMP();
-        const expire_date = FUTURE_UNIX_TIMESTAMP(3);
 
         // Optional: invalidate previous active OTPs for this user/type to prevent confusion
         await conn.execute(
@@ -82,8 +79,14 @@ router.post("/login/send-otp", async (req, res) => {
         await conn.execute(
             `INSERT INTO otps 
         (otp_id, type, otp, username, create_date, expire_date, status, remark)
-       VALUES (?,?,?,?,?,?,?,?)`,
-            [otp_id, "login", otp, username, create_date, expire_date, "0", "Email login OTP"]
+       VALUES (?,?,?,?,CURRENT_TIMESTAMP,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 MINUTE),?,?)`,
+            [otp_id, "login", otp, username, "0", "Email login OTP"]
+        );
+
+        // Fetch expire_date from DB (so backend doesn't calculate time)
+        const [otpMeta] = await conn.query(
+            "SELECT expire_date FROM otps WHERE otp_id = ? ORDER BY id DESC LIMIT 1",
+            [otp_id]
         );
 
         await conn.commit();
@@ -120,7 +123,7 @@ router.post("/login/send-otp", async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "OTP sent successfully",
-            expire: expire_date,
+            expire: otpMeta?.[0]?.expire_date ?? null,
         });
     } catch (err) {
         console.error("LOGIN OTP ERROR:", err);
@@ -188,8 +191,6 @@ router.post("/login/email", async (req, res) => {
         const username = users[0].username;
 
         // 2) Validate OTP (must be un-used AND not expired)
-        const nowUnix = UNIX_TIMESTAMP(); // current time
-
         const [otpRows] = await conn.query(
             `SELECT id, otp, expire_date, status
          FROM otps
@@ -197,10 +198,10 @@ router.post("/login/email", async (req, res) => {
           AND type = ?
           AND otp = ?
           AND status = ?
-          AND expire_date >= ?
+          AND expire_date >= CURRENT_TIMESTAMP
         ORDER BY id DESC
         LIMIT 1`,
-            [username, "login", otp, "0", nowUnix]
+            [username, "login", otp, "0"]
         );
 
         if (!otpRows.length) {
@@ -217,14 +218,16 @@ router.post("/login/email", async (req, res) => {
         // 3) Create token
         const token_id = RANDOM_STRING(30);
         const token = RANDOM_STRING(50);
-        const expire_date = moment().add(30, "days").unix();
-        const create_date = nowUnix;
-
         await conn.query(
             `INSERT INTO tokens
         (token_id, username, token, create_date, create_by, create_ip, last_used_date, last_ip, status, expire_date)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-            [token_id, username, token, create_date, username, IP, create_date, IP, "1", expire_date]
+       VALUES (?,?,?,CURRENT_TIMESTAMP,?,?,CURRENT_TIMESTAMP,?,'1',DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 DAY))`,
+            [token_id, username, token, username, IP, IP]
+        );
+
+        const [tokenMeta] = await conn.query(
+            "SELECT expire_date FROM tokens WHERE token_id = ? LIMIT 1",
+            [token_id]
         );
 
         // 4) Fetch branches
@@ -255,7 +258,7 @@ router.post("/login/email", async (req, res) => {
             success: true,
             message: "Login successful",
             token,
-            expire_date,
+            expire_date: tokenMeta?.[0]?.expire_date ?? null,
             branches,
         });
     } catch (err) {
@@ -313,7 +316,10 @@ router.post('/google-login', async (req, res) => {
         const country_code = user_data?.country_code;
         const mobile = user_data?.mobile;
 
-        await pool.query("INSERT INTO `login_token`(`username`, `create_date`, `create_by`, `modify_date`, `modify_by`, `token`, `expire_date`, `status`) VALUES (?,?,?,?,?,?,?,?)", [username, TIMESTAMP(), username, TIMESTAMP(), username, login_token, FUTURE_TIMESTAMP(43200), '1']);
+        await pool.query(
+            "INSERT INTO `login_token`(`username`, `create_date`, `create_by`, `modify_date`, `modify_by`, `token`, `expire_date`, `status`) VALUES (?,CURRENT_TIMESTAMP,?,CURRENT_TIMESTAMP,?,?,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 DAY),'1')",
+            [username, username, username, login_token]
+        );
 
         const [project_row] = await pool.query("SELECT project_mapping.type, aisensy_projects.* FROM project_mapping JOIN aisensy_projects ON aisensy_projects.project_id = project_mapping.project_id WHERE project_mapping.username = ? AND project_mapping.is_deleted = ? AND aisensy_projects.status = ?", [username, '0', '1']);
 
@@ -392,16 +398,25 @@ router.post('/google-register', async (req, res) => {
 
         var username = RANDOM_STRING(20);
         var password = GENERATE_PASSWORD(8);
-        await pool.query("INSERT INTO `users`(`username`, `password`, `email`, `name`, `create_date`, `create_by`, `modify_date`, `modify_by`, `status`) VALUES (?,?,?,?,?,?,?,?,?)", [username, password, email, name, TIMESTAMP(), username, TIMESTAMP(), username, '1']);
+        await pool.query(
+            "INSERT INTO `users`(`username`, `password`, `email`, `name`, `create_date`, `create_by`, `modify_date`, `modify_by`, `status`) VALUES (?,?,?,?,CURRENT_TIMESTAMP,?,CURRENT_TIMESTAMP,?,'1')",
+            [username, password, email, name, username, username]
+        );
 
 
         const login_token = RANDOM_STRING(50);
 
-        await pool.query("INSERT INTO `login_token`(`username`, `create_date`, `create_by`, `modify_date`, `modify_by`, `token`, `expire_date`, `status`) VALUES (?,?,?,?,?,?,?,?)", [username, TIMESTAMP(), username, TIMESTAMP(), username, login_token, FUTURE_TIMESTAMP(43200), '1']);
+        await pool.query(
+            "INSERT INTO `login_token`(`username`, `create_date`, `create_by`, `modify_date`, `modify_by`, `token`, `expire_date`, `status`) VALUES (?,CURRENT_TIMESTAMP,?,CURRENT_TIMESTAMP,?,?,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 DAY),'1')",
+            [username, username, username, login_token]
+        );
 
 
         // REMOVE THIS DEFAULT MAPPING ON PRODUCTION
-        await pool.query("INSERT INTO `project_mapping`(`unique_id`, `project_id`, `username`, `type`, `create_by`, `create_date`, `modify_by`, `modify_date`, `permission_id`, `is_deleted`) VALUES (?,?,?,?,?,?,?,?,?,?)", [RANDOM_STRING(30), '689d783e207f0b0c309fa07c', username, 'agent', username, TIMESTAMP(), username, TIMESTAMP(), '123456', '0']);
+        await pool.query(
+            "INSERT INTO `project_mapping`(`unique_id`, `project_id`, `username`, `type`, `create_by`, `create_date`, `modify_by`, `modify_date`, `permission_id`, `is_deleted`) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP,?,CURRENT_TIMESTAMP,?,'0')",
+            [RANDOM_STRING(30), '689d783e207f0b0c309fa07c', username, 'agent', username, username, '123456']
+        );
 
         const [project_row] = await pool.query("SELECT project_mapping.type, aisensy_projects.* FROM project_mapping JOIN aisensy_projects ON aisensy_projects.project_id = project_mapping.project_id WHERE project_mapping.username = ? AND project_mapping.is_deleted = ? AND aisensy_projects.status = ?", [username, '0', '1']);
 

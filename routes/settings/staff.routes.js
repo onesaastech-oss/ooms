@@ -3,7 +3,7 @@ const router = express.Router();
 
 import pool from "../../db.js";
 import { auth } from "../../middleware/auth.js";
-import { RANDOM_STRING, UNIX_TIMESTAMP } from "../../helpers/function.js";
+import { RANDOM_STRING } from "../../helpers/function.js";
 
 async function getTableColumns(tableName) {
     const [rows] = await pool.query(`SHOW COLUMNS FROM \`${tableName}\``);
@@ -283,14 +283,13 @@ router.post('/create', auth, async (req, res) => {
             // Insert into branch_mapping (schema-safe)
             map_id = RANDOM_STRING(30);
             const invitation_token = RANDOM_STRING(30);
+            // Let DB defaults handle create_date/modify_date (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
             await insertRow("branch_mapping", {
                 map_id,
                 branch_id,
                 username: resolvedUsername,
                 designation: designation ?? null,
-                create_date: UNIX_TIMESTAMP(),
                 create_by: createdBy || resolvedUsername,
-                modify_date: UNIX_TIMESTAMP(),
                 modify_by: createdBy || resolvedUsername,
                 type: permission || type || "staff",
                 is_accepted: "1",

@@ -1,4 +1,3 @@
-import moment from "moment";
 import pool from "../db.js";
 
 const RANDOM_STRING = (length = 30) => {
@@ -27,26 +26,6 @@ const RANDOM_INTEGER = (length = 6) => {
     const max = Math.pow(10, length) - 1;
 
     return Math.floor(min + Math.random() * (max - min + 1));
-}
-
-const UNIX_TIMESTAMP = () => {
-    return moment().unix();
-}
-
-const FUTURE_UNIX_TIMESTAMP = (minutes = 0) => {
-    return moment().add(minutes, "minutes").unix();
-}
-
-const TIMESTAMP = () => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mi = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 function GENERATE_PASSWORD(length = 8) {
@@ -91,11 +70,8 @@ async function USER_DATA(username = '') {
 
 export {
     RANDOM_STRING,
-    TIMESTAMP,
     GENERATE_PASSWORD,
     IS_STRONG_PASSWORD,
     USER_DATA,
-    RANDOM_INTEGER,
-    UNIX_TIMESTAMP,
-    FUTURE_UNIX_TIMESTAMP
+    RANDOM_INTEGER
 };
