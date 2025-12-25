@@ -239,7 +239,7 @@ router.post("/login/email", async (req, res) => {
           AND branch_mapping.is_accepted = ?
           AND branch_mapping.status = ?
           AND branch_mapping.is_deleted = ?`,
-            [username, 1, 1, 0]
+            [username, '1', '1', '0']
         );
 
         await conn.commit();
@@ -279,7 +279,6 @@ router.post("/login/email", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
 
 
 router.post('/google-login', async (req, res) => {
