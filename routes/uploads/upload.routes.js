@@ -161,11 +161,33 @@ router.post("/upload-media", auth, (req, res) => {
     upload.single("file")(req, res, async (err) => {
         if (err) {
             console.error("Multer error:", err);
-            return res.status(200).json({ error: "Invalid file type or upload failed" });
+            
+            // Handle specific multer errors
+            if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+                return res.status(400).json({ 
+                    success: false,
+                    message: `Wrong field name. Expected field name 'file' but received '${err.field}'. Please use 'file' as the form-data key.`
+                });
+            }
+            
+            if (err.message && err.message.includes("Unsupported file type")) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: err.message 
+                });
+            }
+            
+            return res.status(400).json({ 
+                success: false,
+                message: "Invalid file type or upload failed" 
+            });
         }
 
         if (!req.file) {
-            return res.status(200).json({ error: "File not set" });
+            return res.status(400).json({ 
+                success: false,
+                message: "No file uploaded. Please provide a file with field name 'file'" 
+            });
         }
 
         try {
@@ -189,12 +211,16 @@ router.post("/upload-media", auth, (req, res) => {
             }
 
             return res.status(200).json({
-                error: false,
+                success: true,
+                message: "File uploaded successfully",
                 link: `${BASE_DOMAIN}/api/v1/upload/${finalFilename}`
             });
         } catch (error) {
             console.error("Upload processing error:", error);
-            return res.status(200).json({ error: "File processing failed" });
+            return res.status(500).json({ 
+                success: false,
+                message: "File processing failed" 
+            });
         }
     });
 });
