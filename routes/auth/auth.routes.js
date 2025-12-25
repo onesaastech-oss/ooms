@@ -257,6 +257,7 @@ router.post("/login/email", async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Login successful",
+            username,
             token,
             expire_date: tokenMeta?.[0]?.expire_date ?? null,
             branches,

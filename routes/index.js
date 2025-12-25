@@ -13,6 +13,7 @@ import emailBroadcastRoutes from "./broadcast/email.routes.js";
 import groupRoutes from "./groups/group.routes.js";
 import firmsRoutes from "./firms/firms.routes.js";
 import servicesRoutes from "./services/services.routes.js";
+import transactionsRoutes from "./transactions/transactions.routes.js";
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
 router.use("/tasks", taskRoutes);
@@ -25,6 +26,7 @@ router.use("/broadcast/email", emailBroadcastRoutes);
 router.use("/groups", groupRoutes);
 router.use("/services", servicesRoutes);
 router.use("/firms", firmsRoutes);
+router.use("/transactions", transactionsRoutes);
 // Static chat media files
 router.use("/chat-media", express.static(path.join(process.cwd(), "/media/chat")));
 
