@@ -30,50 +30,7 @@ async function insertRow(tableName, data) {
     return result;
 }
 
-/**
- * @swagger
- * /api/v1/settings:
- *   get:
- *     tags: [Settings]
- *     summary: Get all settings options
- *     description: Returns a list of all available settings with their titles and descriptions
- *     responses:
- *       200:
- *         description: List of settings retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Settings list retrieved successfully
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         example: staff-list
- *                       title:
- *                         type: string
- *                         example: Staff List
- *                       description:
- *                         type: string
- *                         example: Add, edit & delete staff members
- *                       icon:
- *                         type: string
- *                         example: users
- *                       route:
- *                         type: string
- *                         example: /settings/staff
- *       500:
- *         description: Internal server error
- */
+
 router.get('/settings-list', (req, res) => {
     try {
         const settingsList = [
@@ -180,57 +137,7 @@ router.get('/settings-list', (req, res) => {
 });
 
 router.post('/create', auth, async (req, res) => {
-    // #swagger.tags = ['Settings']
-    // #swagger.summary = 'Create staff mapping (assign existing user to a branch)'
-    // #swagger.description = 'Resolves an existing user by username or email/login_id and creates an entry in branch_mapping (idempotent if already mapped and not deleted).'
-    // #swagger.security = [{ "bearerAuth": [] }]
-    /* #swagger.parameters['body'] = {
-        in: 'body',
-        required: true,
-        schema: {
-            type: 'object',
-            required: ['branch_id'],
-            properties: {
-                username: { type: 'string', example: 'john.doe' },
-                email: { type: 'string', example: 'john.doe@example.com' },
-                branch_id: { type: 'string', example: '565655' },
-                designation: { type: 'string', example: 'Manager' },
-                permission: { type: 'string', example: 'admin' }
-            },
-            example: {
-                username: 'john.doe',
-                branch_id: '565655',
-                designation: 'Manager',
-                permission: 'admin'
-            }
-        }
-    } */
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Staff assigned to branch successfully' },
-                data: {
-                    type: 'object',
-                    properties: {
-                        username: { type: 'string', example: 'john.doe' },
-                        branch_id: { type: 'string', example: '565655' },
-                        map_id: { type: 'string', example: 'abc123xyz456' }
-                    }
-                }
-            }
-        }
-    } */
-    /* #swagger.responses[400] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: false },
-                message: { type: 'string', example: 'Missing required parameters' }
-            }
-        }
-    } */
+
     try {
         const { username, email, branch_id, designation, permission, type='staff' } = req.body || {};
         const createdBy = req.headers["username"] || "";
@@ -312,37 +219,7 @@ router.post('/create', auth, async (req, res) => {
 });
 
 router.get('/list', auth, async (req, res) => {
-    // #swagger.tags = ['Settings']
-    // #swagger.summary = 'Get staff list for a branch'
-    // #swagger.description = 'Retrieve all staff members assigned to a specific branch'
-    // #swagger.security = [{ "bearerAuth": [] }]
-    /* #swagger.parameters['branch_id'] = {
-        in: 'query',
-        required: true,
-        type: 'string',
-        example: '565655'
-    } */
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Staff list retrieved successfully' },
-                data: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            map_id: { type: 'string', example: 'abc123xyz456' },
-                            username: { type: 'string', example: 'john.doe' },
-                            designation: { type: 'string', example: 'Manager' },
-                            type: { type: 'string', example: 'admin' }
-                        }
-                    }
-                }
-            }
-        }
-    } */
+   
     try {
         const { branch_id } = req.query;
         const [rows] = await pool.query(
@@ -358,42 +235,6 @@ router.get('/list', auth, async (req, res) => {
 });
 
 router.post('/delete', auth, async (req, res) => {
-    // #swagger.tags = ['Settings']
-    // #swagger.summary = 'Delete staff member'
-    // #swagger.description = 'Soft delete a staff member by setting is_deleted flag to 1 in branch_mapping table'
-    // #swagger.security = [{ "bearerAuth": [] }]
-    /* #swagger.parameters['body'] = {
-        in: 'body',
-        required: true,
-        schema: {
-            type: 'object',
-            required: ['map_id'],
-            properties: {
-                map_id: { type: 'string', example: 'abc123xyz456' }
-            },
-            example: {
-                map_id: 'abc123xyz456'
-            }
-        }
-    } */
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Staff deleted successfully' }
-            }
-        }
-    } */
-    /* #swagger.responses[500] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: false },
-                message: { type: 'string', example: 'Failed to delete staff' }
-            }
-        }
-    } */
     try {
         const { map_id } = req.body;
         const [rows] = await pool.query("UPDATE branch_mapping SET is_deleted = '1', deleted_by = ? WHERE map_id = ?", [req.headers["username"], map_id]);
@@ -405,35 +246,6 @@ router.post('/delete', auth, async (req, res) => {
 });
 
 router.get('/profile', auth, async (req, res) => {
-    // #swagger.tags = ['Settings']
-    // #swagger.summary = 'Get staff profile'
-    // #swagger.description = 'Retrieve profile information for a staff member by username'
-    // #swagger.security = [{ "bearerAuth": [] }]
-    /* #swagger.parameters['username'] = {
-        in: 'query',
-        required: true,
-        type: 'string',
-        example: 'john.doe'
-    } */
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Staff profile retrieved successfully' },
-                data: { type: 'array', items: { type: 'object' } }
-            }
-        }
-    } */
-    /* #swagger.responses[500] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: false },
-                message: { type: 'string', example: 'Failed to fetch staff profile' }
-            }
-        }
-    } */
     try {
         const { username } = req.query;
         const [rows] = await pool.query("SELECT * FROM profile WHERE username = ?", [username]);

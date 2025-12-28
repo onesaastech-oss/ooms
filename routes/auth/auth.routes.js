@@ -9,32 +9,6 @@ import { OAuth2Client } from "google-auth-library";
 import { SendMail } from "../../helpers/Mail.js";
 
 router.post("/login/send-otp", async (req, res) => {
-    // #swagger.tags = ['Authentication']
-    // #swagger.summary = 'Send OTP for login'
-    // #swagger.description = 'Validates user credentials and sends an OTP to the registered email address for login verification.'
-    /* #swagger.parameters['body'] = {
-          in: 'body',
-          description: 'Login credentials',
-          required: true,
-          schema: { $ref: '#/definitions/LoginRequest' }
-    } */
-    /* #swagger.responses[200] = {
-          description: 'OTP sent successfully',
-          schema: { $ref: '#/definitions/ApiResponse' }
-    } */
-    /* #swagger.responses[400] = {
-          description: 'Missing required parameters',
-          schema: { $ref: '#/definitions/ApiResponse' }
-    } */
-    /* #swagger.responses[401] = {
-          description: 'Invalid username or password',
-          schema: { $ref: '#/definitions/ApiResponse' }
-    } */
-    /* #swagger.responses[500] = {
-          description: 'Server error',
-          schema: { $ref: '#/definitions/ApiResponse' }
-    } */
-
     let conn;
 
     try {
@@ -144,19 +118,6 @@ router.post("/login/send-otp", async (req, res) => {
 });
 
 router.post("/login/email", async (req, res) => {
-    // #swagger.tags = ['Authentication']
-    // #swagger.summary = 'Login with email and OTP'
-    // #swagger.description = 'Validates email + password, verifies OTP, creates a session token, and returns mapped branches.'
-    /* #swagger.parameters['body'] = {
-        in: 'body',
-        description: 'Login credentials with OTP',
-        required: true,
-        schema: { $ref: '#/definitions/LoginOTPRequest' }
-    } */
-    /* #swagger.responses[200] = {
-        description: 'Login successful',
-        schema: { $ref: '#/definitions/ApiResponse' }
-    } */
 
     let conn;
 

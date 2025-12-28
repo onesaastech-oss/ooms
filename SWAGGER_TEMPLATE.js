@@ -8,53 +8,6 @@
 // ============================================
 
 router.post('/your-endpoint', auth, async (req, res) => {
-    // #swagger.tags = ['YourTag']  // Change to appropriate tag: Settings, Authentication, etc.
-    // #swagger.summary = 'Brief summary of endpoint'
-    // #swagger.description = 'Detailed description of what this endpoint does'
-    // #swagger.security = [{ "bearerAuth": [] }]  // Remove this line if no auth needed
-    
-    /* #swagger.parameters['body'] = {
-        in: 'body',
-        required: true,
-        schema: {
-            type: 'object',
-            required: ['required_field1', 'required_field2'],  // List required fields
-            properties: {
-                field1: { type: 'string', example: 'example value' },
-                field2: { type: 'integer', example: 123 },
-                field3: { type: 'boolean', example: true },
-                field4: { type: 'number', example: 99.99 },
-                field5: { type: 'array', items: { type: 'string' }, example: ['item1', 'item2'] }
-            },
-            example: {
-                field1: 'example value',
-                field2: 123,
-                field3: true,
-                field4: 99.99,
-                field5: ['item1', 'item2']
-            }
-        }
-    } */
-    
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Success message' },
-                data: { type: 'object' }
-            }
-        }
-    } */
-    /* #swagger.responses[400] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: false },
-                message: { type: 'string', example: 'Bad request' }
-            }
-        }
-    } */
     
     try {
         const { field1, field2 } = req.body;

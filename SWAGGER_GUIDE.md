@@ -149,47 +149,7 @@ const router = express.Router();
 import { auth } from "../../middleware/auth.js";
 
 router.post('/create-item', auth, async (req, res) => {
-    // #swagger.tags = ['Items']
-    // #swagger.summary = 'Create a new item'
-    // #swagger.description = 'Creates a new item with the provided details'
-    // #swagger.security = [{ "bearerAuth": [] }]
-    /* #swagger.parameters['body'] = {
-        in: 'body',
-        required: true,
-        schema: {
-            type: 'object',
-            required: ['name', 'price'],
-            properties: {
-                name: { type: 'string', example: 'Product Name' },
-                price: { type: 'number', example: 99.99 },
-                description: { type: 'string', example: 'Product description' },
-                category: { type: 'string', example: 'electronics' }
-            },
-            example: {
-                name: 'Product Name',
-                price: 99.99,
-                description: 'Product description',
-                category: 'electronics'
-            }
-        }
-    } */
-    /* #swagger.responses[200] = {
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Item created successfully' },
-                data: {
-                    type: 'object',
-                    properties: {
-                        id: { type: 'integer', example: 1 },
-                        name: { type: 'string', example: 'Product Name' }
-                    }
-                }
-            }
-        }
-    } */
-    
+  
     try {
         const { name, price, description, category } = req.body;
         // Your logic here
